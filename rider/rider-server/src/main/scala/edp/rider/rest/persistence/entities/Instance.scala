@@ -30,20 +30,28 @@ case class Instance(id: Long,
                     desc: Option[String] = None,
                     nsSys: String,
                     connUrl: String,
+                    connConfig: Option[String] = None,
                     active: Boolean,
                     createTime: String,
                     createBy: Long,
                     updateTime: String,
-                    updateBy: Long) extends BaseEntity
+                    updateBy: Long) extends BaseEntity {
+  override def copyWithId(id: Long): this.type = {
+    copy(id = id).asInstanceOf[this.type]
+  }
+}
 
 
 case class SimpleInstance(desc: Option[String] = None,
                           nsSys: String,
                           nsInstance: String,
-                          connUrl: String) extends SimpleBaseEntity
+                          connUrl: String,
+                          connConfig: Option[String] = None) extends SimpleBaseEntity
+
+case class InstanceName(id: Long, nsInstance: String)
 
 class InstanceTable(_tableTag: Tag) extends BaseTable[Instance](_tableTag, "instance") {
-  def * = (id, nsInstance, desc, nsSys, connUrl, active, createTime, createBy, updateTime, updateBy) <>(Instance.tupled, Instance.unapply)
+  def * = (id, nsInstance, desc, nsSys, connUrl, connConfig, active, createTime, createBy, updateTime, updateBy) <> (Instance.tupled, Instance.unapply)
 
   /** Database column ns_instance SqlType(VARCHAR), Length(200,true) */
   val nsInstance: Rep[String] = column[String]("ns_instance", O.Length(200, varying = true))
@@ -53,7 +61,8 @@ class InstanceTable(_tableTag: Tag) extends BaseTable[Instance](_tableTag, "inst
   val nsSys: Rep[String] = column[String]("ns_sys", O.Length(30, varying = true))
   /** Database column conn_url SqlType(VARCHAR), Length(1000,true) */
   val connUrl: Rep[String] = column[String]("conn_url", O.Length(200, varying = true))
-
+  /** Database column conn_config SqlType(VARCHAR), Length(1000,true) */
+  val connConfig: Rep[Option[String]] = column[Option[String]]("conn_config", O.Length(1000, varying = true), O.Default(None))
   /** Uniqueness Index over (nsInstance,nsSys) (database name instance_UNIQUE) */
   val index1 = index("instance_UNIQUE", (nsInstance, nsSys), unique = true)
 }

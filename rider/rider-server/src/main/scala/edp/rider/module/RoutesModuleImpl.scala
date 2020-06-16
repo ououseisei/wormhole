@@ -30,7 +30,7 @@ trait RoutesModuleImpl {
   this: ConfigurationModule with PersistenceModule =>
 
   lazy val instanceAdminService = new InstanceAdminApi(instanceDal)
-  lazy val databaseAdminService = new NsDatabaseAdminApi(databaseDal)
+  lazy val databaseAdminService = new NsDatabaseAdminApi(databaseDal, instanceDal)
   lazy val namespaceAdminService = new NamespaceAdminApi(namespaceDal, databaseDal, relProjectNsDal)
   lazy val streamAdminService = new StreamAdminApi(streamDal,projectDal,jobDal)
   lazy val flowAdminService = new FlowAdminApi(flowDal, streamDal)
@@ -43,8 +43,8 @@ trait RoutesModuleImpl {
   lazy val userService = new UserApi(userDal, relProjectUserDal)
   lazy val projectUserService = new ProjectUserApi(projectDal, relProjectUserDal)
   lazy val namespaceUserService = new NamespaceUserApi(namespaceDal, relProjectNsDal)
-  lazy val streamUserService = new StreamUserApi(jobDal, streamDal, projectDal, relStreamUdfDal, inTopicDal, flowDal)
-  lazy val flowUserService = new FlowUserApi(flowDal, streamDal)
+  lazy val streamUserService = new StreamUserApi(jobDal, streamDal, projectDal, relStreamUdfDal, streamInTopicDal, flowDal)
+  lazy val flowUserService = new FlowUserApi(flowDal, streamDal, flowUdfDal, feedbackErrDal, rechargeResultLogDal)
   lazy val actionUserService = new ActionUserApi(streamDal, flowDal)
   lazy val monitorUserService = new MonitorUserApi(streamDal)
   lazy val instanceUserService = new InstanceUserApi(relProjectNsDal)
@@ -55,8 +55,8 @@ trait RoutesModuleImpl {
 
   lazy val jobAppService = new JobAppApi(jobDal, projectDal)
   lazy val flowAppService = new FlowAppApi(flowDal, streamDal, projectDal)
-  lazy val monitorAppService = new MonitorAppApi(flowDal, projectDal, streamDal, jobDal, feedbackFlowErrDal, feedbackOffsetDal)
-
+  lazy val monitorAppService = new MonitorAppApi(flowDal, projectDal, streamDal, jobDal, feedbackErrDal, feedbackOffsetDal, monitorInfoDal)
+  lazy val monitorService=new MonitorApi(flowDal,streamDal,monitorInfoDal)
 
 }
 

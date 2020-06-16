@@ -4,12 +4,12 @@ import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.server.Route
 import edp.rider.common.{AppResult, JobStatus, RiderLogger}
 import edp.rider.rest.persistence.dal.JobDal
-import edp.rider.rest.persistence.entities.{FullJobInfo, Job}
+import edp.rider.rest.persistence.entities.{FullJobInfo, Job, JobTopicInfo}
 import edp.rider.rest.router.{JsonSerializer, ResponseJson, ResponseSeqJson, SessionClass}
-import edp.rider.rest.util.{AuthorizationProvider, JobUtils}
+import edp.rider.rest.util.{AuthorizationProvider, JobUtils, NamespaceUtils}
 import edp.rider.rest.util.JobUtils.getDisableAction
 import edp.rider.rest.util.ResponseUtils.getHeader
-import edp.rider.spark.{SparkJobClientLog, SparkStatusQuery}
+import edp.rider.yarn.{YarnClientLog, YarnStatusQuery}
 import edp.rider.rest.util.CommonUtils.minTimeOut
 
 import scala.concurrent.Await
@@ -29,13 +29,12 @@ class JobAdminApi(jobDal: JobDal) extends BaseAdminApiImpl(jobDal) with RiderLog
             val uniqueProjectIds = jobs.map(_.projectId).distinct
             val projectIdAndName: Map[Long, String] = jobDal.getAllUniqueProjectIdAndName(uniqueProjectIds)
             if (jobs != null && jobs.nonEmpty) {
-              val jobsNameSet = jobs.map(_.name).toSet
-              val jobList = jobs.filter(_.startedTime.isDefined)
-              val minStartTime = if (jobList.isEmpty) "" else jobList.map(_.startedTime.get).sorted.head //check null to option None todo
-              val allAppStatus: List[AppResult] = SparkStatusQuery.getAllAppStatus(minStartTime).filter(t => jobsNameSet.contains(t.appName))
+              //check null to option None todo
               val jobsGroupByProjectId: Map[Long, Seq[Job]] = jobs.groupBy(_.projectId)
               val rst = jobsGroupByProjectId.flatMap { case (projectId, jobSeq) =>
-                SparkStatusQuery.getSparkAllJobStatus(jobSeq, allAppStatus, projectIdAndName(projectId))
+                jobSeq.map(job => {
+                  FullJobInfo(job, projectIdAndName(projectId), getDisableAction(job))
+                })
               }.toSeq.sortBy(_.job.id)
               riderLogger.info(s"user ${session.userId} select all jobs success.")
               complete(OK, ResponseSeqJson[FullJobInfo](getHeader(200, session), rst))
@@ -64,11 +63,10 @@ class JobAdminApi(jobDal: JobDal) extends BaseAdminApiImpl(jobDal) with RiderLog
               if (jobs != null && jobs.nonEmpty) {
                 riderLogger.info(s"user ${session.userId} refresh project $projectId, and job in it is not null and not empty.")
                 val projectName = jobDal.adminGetRow(projectId)
-                val jobsNameSet = jobs.map(_.name).toSet
-                val jobList = jobs.filter(_.startedTime.isDefined)
-                val minStartTime = if (jobList.isEmpty) "" else jobList.map(_.startedTime.get).sorted.head //check null to option None todo
-                val allAppStatus = SparkStatusQuery.getAllAppStatus(minStartTime).filter(t => jobsNameSet.contains(t.appName))
-                val rst: Seq[FullJobInfo] = SparkStatusQuery.getSparkAllJobStatus(jobs, allAppStatus, projectName)
+                //check null to option None todo
+                val rst: Seq[FullJobInfo] = jobs.map(job => {
+                  FullJobInfo(job, projectName, getDisableAction(job))
+                })
                 complete(OK, ResponseJson[Seq[FullJobInfo]](getHeader(200, session), rst.sortBy(_.job.id)))
               } else {
                 riderLogger.info(s"user ${session.userId} refresh project $projectId, but no jobs in project.")
@@ -95,7 +93,7 @@ class JobAdminApi(jobDal: JobDal) extends BaseAdminApiImpl(jobDal) with RiderLog
                 case Success(job) =>
                   if (job.isDefined) {
                     riderLogger.info(s"user ${session.userId} refresh job log where job id is $jobId success.")
-                    val log = SparkJobClientLog.getLogByAppName(job.get.name)
+                    val log = YarnClientLog.getLogByAppName(job.get.name, job.get.logPath.getOrElse(""))
                     complete(OK, ResponseJson[String](getHeader(200, session), log))
                   } else {
                     riderLogger.error(s"user ${session.userId} refresh job log where job id is $jobId, but job do not exist")
@@ -124,12 +122,12 @@ class JobAdminApi(jobDal: JobDal) extends BaseAdminApiImpl(jobDal) with RiderLog
               val jobOut = Await.result(jobDal.findById(jobId), minTimeOut)
               jobOut match {
                 case Some(_) =>
-              riderLogger.info(s"user ${session.userId} refresh job.")
-              val job = JobUtils.refreshJob(jobId)
-              val projectName = jobDal.adminGetRow(job.projectId)
-              complete(OK, ResponseJson[FullJobInfo](getHeader(200, session), FullJobInfo(job, projectName, getDisableAction(job))))
+                  riderLogger.info(s"user ${session.userId} refresh job.")
+                  val job = JobUtils.refreshJob(jobId)
+                  val projectName = jobDal.adminGetRow(job.projectId)
+                  complete(OK, ResponseJson[JobTopicInfo](getHeader(200, session), JobTopicInfo(job, projectName, NamespaceUtils.getTopic(job.sourceNs), getDisableAction(job))))
                 case None =>
-                complete(OK, getHeader(200, s"this job ${jobId} does not exist", session))
+                  complete(OK, getHeader(200, s"this job ${jobId} does not exist", session))
 
               }
             }

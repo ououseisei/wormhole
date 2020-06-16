@@ -22,7 +22,7 @@
 package edp.rider.rest.persistence.entities
 
 import edp.rider.rest.persistence.base.{BaseEntity, BaseTable, SimpleBaseEntity}
-import edp.wormhole.common.KVConfig
+import edp.wormhole.util.config.KVConfig
 import slick.jdbc.MySQLProfile.api._
 import slick.lifted.{Rep, Tag}
 
@@ -43,7 +43,11 @@ case class Namespace(id: Long,
                      createTime: String,
                      createBy: Long,
                      updateTime: String,
-                     updateBy: Long) extends BaseEntity
+                     updateBy: Long) extends BaseEntity {
+  override def copyWithId(id: Long): this.type = {
+    copy(id = id).asInstanceOf[this.type]
+  }
+}
 
 case class SourceSchema(umsType: Option[String],
                         jsonSample: Option[Object],
@@ -156,6 +160,8 @@ case class NamespaceAdmin(id: Long,
                           updateBy: Long,
                           projectName: String,
                           topic: String)
+
+case class NamespaceName(id: Long, namespace: String)
 
 case class NamespaceProjectName(nsId: Long,
                                 name: String)

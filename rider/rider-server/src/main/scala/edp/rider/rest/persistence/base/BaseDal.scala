@@ -24,6 +24,7 @@ package edp.rider.rest.persistence.base
 import edp.rider.module.DbModule._
 import slick.jdbc.MySQLProfile.api._
 import slick.lifted.CanBeQueryCondition
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -57,15 +58,18 @@ trait BaseDal[T, A] {
 
 }
 
-class BaseDalImpl[T <: BaseTable[A], A <: BaseEntity](tableQ: TableQuery[T]) extends BaseDal[T, A] {
+class BaseDalImpl[T <: BaseTable[A], A <: Product with BaseEntity](tableQ: TableQuery[T]) extends BaseDal[T, A] {
 
   override def insert(row: A): Future[A] = insert(Seq(row)).map(_.head)
 
   override def insert(rows: Seq[A]): Future[Seq[A]] = {
-    val ids = db.run(tableQ returning tableQ.map(_.id) ++= rows)
-    ids.flatMap[Seq[A]] {
+    val action = tableQ returning tableQ.map(_.id) into ((t, id) => t.copyWithId(id = id).asInstanceOf[A]) ++= rows
+    db.run(action)
+    /*val ids = Await.result(db.run(action), CommonUtils.minTimeOut)*/
+    /*findByFilter(_.id inSet ids)*/
+    /*ids.flatMap[Seq[A]] {
       seq => findByFilter(_.id inSet seq)
-    }
+    }*/
   }
 
   override def update(row: A): Future[Int] = db.run(tableQ.filter(_.id === row.id).update(row))

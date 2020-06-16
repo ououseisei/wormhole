@@ -21,7 +21,9 @@
 
 package edp.rider.wormhole
 
-import edp.wormhole.common.{ConnectionConfig, KVConfig}
+import edp.rider.rest.persistence.entities.{FlowUdfResponse, StreamSpecialConfig}
+import edp.wormhole.util.config.{ConnectionConfig, KVConfig}
+
 
 case class BatchJobConfig(sourceConfig: SourceConfig,
                           transformationConfig: Option[TransformationConfig],
@@ -44,8 +46,7 @@ case class SinkConfig(sinkNamespace: String,
                       classFullName: Option[String],
                       specialConfig: Option[String],
                       tableKeys: Option[String],
-                      projection: Option[String],
-                      sink_protocol: Option[String])
+                      projection: Option[String])
 
 case class JobConfig(appName: String,
                      master: String,
@@ -56,9 +57,15 @@ case class BatchFlowConfig(kafka_input: KafkaInputBaseConfig,
                            kafka_output: KafkaOutputConfig,
                            spark_config: SparkConfig,
                            rdd_partition_number: Int, //-1 do not repartition
+                           zookeeper_address: String,
                            zookeeper_path: String,
                            kafka_persistence_config_isvalid: Boolean,
-                           stream_hdfs_address: Option[String])
+                           special_config: Option[StreamSpecialConfig] = None,
+                           stream_hdfs_address: Option[String],
+                           kerberos: Boolean = false,
+                           hdfs_namenode_hosts: Option[String] = None,
+                           hdfs_namenode_ids: Option[String] = None,
+                           hdfslog_server_kerberos: Option[Boolean] = None)
 
 //for parquet，data is main namespace or join namespace
 
@@ -67,15 +74,15 @@ case class SparkConfig(stream_id: Long,
                        master: String,
                        `spark.sql.shuffle.partitions`: Int)
 
-case class KafkaOutputConfig(feedback_topic_name: String, brokers: String, config: Option[Seq[KVConfig]] = None)
-
-case class KafkaInputConfig(kafka_base_config: KafkaInputBaseConfig,
-                            kafka_topics: Seq[KafkaTopicConfig],
-                            inWatch: Boolean)
+case class KafkaOutputConfig(feedback_topic_name: String,
+                             brokers: String,
+                             kerberos: Boolean,
+                             config: Option[Seq[KVConfig]] = None)
 
 case class KafkaInputBaseConfig(group_id: String,
                                 batch_duration_seconds: Int,
                                 brokers: String,
+                                kerberos: Boolean,
                                 `max.partition.fetch.bytes`: Int = 10485760,
                                 `session.timeout.ms`: Int = 30000,
                                 `group.max.session.timeout.ms`: Int = 60000,
@@ -84,10 +91,25 @@ case class KafkaInputBaseConfig(group_id: String,
                                 `value.deserializer`: String = "org.apache.kafka.common.serialization.StringDeserializer",
                                 `enable.auto.commit`: Boolean = false)
 
+case class KafkaBaseConfig(group_id: String,
+                           brokers: String,
+                           kerberos: Boolean,
+                           `session.timeout.ms`: Int = 30000,
+                           `group.max.session.timeout.ms`: Int = 60000,
+                           `key.deserializer`: String = "org.apache.kafka.common.serialization.StringDeserializer",
+                           `value.deserializer`: String = "org.apache.kafka.common.serialization.StringDeserializer",
+                           `auto.offset.reset`: String = "earliest"
+                          )
 
-case class KafkaTopicConfig(topic_name: String,
-                            topic_rate: Int,
-                            topic_partition: Seq[PartitionOffsetConfig])
+case class KafkaFlinkTopic(topic_name: String,
+                           topic_partition: String)
 
-case class PartitionOffsetConfig(partition_num: Int, offset: Long)
+
+case class KafkaInput(kafka_base_config: KafkaBaseConfig, kafka_topics: Seq[KafkaFlinkTopic])
+
+case class WhFlinkConfig(flow_name: String, kafka_input: KafkaInput, kafka_output: KafkaOutputConfig, commonConfig: FlinkCommonConfig, zookeeper_address: String, udf_config: Seq[FlowUdfResponse], feedback_enabled: Boolean, feedback_state_count: Int, feedback_interval: Int, kerberos: Boolean = false)
+
+case class FlinkCommonConfig(stateBackend: String)
+
+case class FlinkCheckpoint(enable: Boolean = false, `checkpointInterval.ms`: Int = 60000, stateBackend: String)
 

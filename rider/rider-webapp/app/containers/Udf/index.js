@@ -19,14 +19,13 @@
  */
 
 import React from 'react'
+import PropTypes from 'prop-types'
 import { connect } from 'react-redux'
 import { createStructuredSelector } from 'reselect'
 import Helmet from 'react-helmet'
 import { FormattedMessage } from 'react-intl'
 import messages from './messages'
 
-import { operateLanguageText } from '../../utils/util'
-import UdfForm from './UdfForm'
 import Table from 'antd/lib/table'
 import Button from 'antd/lib/button'
 import Icon from 'antd/lib/icon'
@@ -39,9 +38,12 @@ import Input from 'antd/lib/input'
 import DatePicker from 'antd/lib/date-picker'
 const { RangePicker } = DatePicker
 
-import { changeLocale } from '../../containers/LanguageProvider/actions'
+import { operateLanguageText } from '../../utils/util'
+import UdfForm from './UdfForm'
 import { loadUdfs, loadSingleUdf, addUdf, loadUdfDetail, editUdf, deleteUdf } from './action'
 import { selectUdfs, selectError, selectModalLoading } from './selectors'
+import { selectRoleType } from '../App/selectors'
+import { selectLocale } from '../LanguageProvider/selectors'
 
 export class Udf extends React.PureComponent {
   constructor (props) {
@@ -86,17 +88,19 @@ export class Udf extends React.PureComponent {
       paginationInfo: null,
 
       queryUdfVal: {},
-      showUdfDetail: {}
+      showUdfDetail: {},
+      streamType: '',
+      mapOrAgg: ''
     }
   }
 
   componentWillMount () {
-    if (localStorage.getItem('loginRoleType') === 'admin') {
-      if (!this.props.udfClassHide) {
+    const { roleType, udfClassHide } = this.props
+    if (roleType === 'admin') {
+      if (!udfClassHide) {
         this.props.onLoadUdfs(() => { this.udfRefreshState() })
       }
     }
-    this.props.onChangeLanguage(localStorage.getItem('preferredLanguage'))
   }
 
   componentWillReceiveProps (props) {
@@ -114,8 +118,7 @@ export class Udf extends React.PureComponent {
   }
 
   searchOperater () {
-    const { columnNameText, valueText, visibleBool } = this.state
-    const { startTimeTextState, endTimeTextState } = this.state
+    const { columnNameText, valueText, visibleBool, startTimeTextState, endTimeTextState } = this.state
 
     if (columnNameText !== '') {
       this.onSearch(columnNameText, valueText, visibleBool)()
@@ -131,12 +134,12 @@ export class Udf extends React.PureComponent {
       refreshUdfLoading: true,
       refreshUdfText: 'Refreshing'
     })
-    const { projectIdGeted, udfClassHide } = this.props
-    if (localStorage.getItem('loginRoleType') === 'admin') {
+    const { projectIdGeted, udfClassHide, roleType } = this.props
+    if (roleType === 'admin') {
       udfClassHide === 'hide'
         ? this.props.onLoadSingleUdf(projectIdGeted, 'admin', () => { this.udfRefreshState() })
         : this.props.onLoadUdfs(() => { this.udfRefreshState() })
-    } else if (localStorage.getItem('loginRoleType') === 'user') {
+    } else if (roleType === 'user') {
       this.props.onLoadSingleUdf(projectIdGeted, 'user', () => { this.udfRefreshState() })
     }
   }
@@ -151,9 +154,11 @@ export class Udf extends React.PureComponent {
   }
 
   showAddUdf = () => {
-    this.setState({
-      formVisible: true,
-      formType: 'add'
+    this.setState({streamType: 'spark'}, () => {
+      this.setState({
+        formVisible: true,
+        formType: 'add'
+      })
     })
   }
 
@@ -177,29 +182,29 @@ export class Udf extends React.PureComponent {
   }
 
   onShowEditUdf = (record) => (e) => {
-    this.setState({
-      formVisible: true,
-      formType: 'edit'
-    }, () => {
-      this.props.onLoadUdfDetail(record.id, ({
-        createTime, createBy, updateTime, updateBy, id, functionName, fullClassName, jarName, desc, pubic
-                                             }) => {
-        this.setState({
-          queryUdfVal: {
-            createTime: createTime,
-            createBy: createBy,
-            updateTime: updateTime,
-            updateBy: updateBy
-          }
-        })
+    this.props.onLoadUdfDetail(record.id, ({ createTime, createBy, updateTime, updateBy, id, functionName, fullClassName, jarName, desc, pubic, streamType }) => {
+      this.setState({
+        queryUdfVal: {
+          createTime: createTime,
+          createBy: createBy,
+          updateTime: updateTime,
+          updateBy: updateBy
+        },
+        streamType,
+        formVisible: true,
+        formType: 'edit'
+      }, () => {
         this.udfForm.setFieldsValue({
           id: id,
           functionName: functionName,
           fullName: fullClassName,
-          jarName: jarName,
           desc: desc,
-          public: `${pubic}`
+          public: `${pubic}`,
+          streamType
         })
+        if (streamType === 'spark') {
+          this.udfForm.setFieldsValue({ jarName })
+        }
       })
     })
   }
@@ -208,15 +213,17 @@ export class Udf extends React.PureComponent {
   hideForm = () => this.setState({ formVisible: false })
 
   // Modal 完全关闭后的回调
-  resetModal = () => this.udfForm.resetFields()
+  resetModal = () => {
+    this.udfForm.resetFields()
+  }
 
   onModalOk = () => {
     const { formType, queryUdfVal } = this.state
-    const languageText = localStorage.getItem('preferredLanguage')
-    const createText = languageText === 'en' ? 'is created successfully!' : '新建成功！'
-    const copyText = languageText === 'en' ? 'is copied successfully!' : '复制成功！'
-    const createFailText = languageText === 'en' ? 'It fails to create UDF:' : '新建失败：'
-    const copyFailText = languageText === 'en' ? 'It fails to copy UDF:' : '复制失败：'
+    const { locale } = this.props
+    const createText = locale === 'en' ? 'is created successfully!' : '新建成功！'
+    const copyText = locale === 'en' ? 'is copied successfully!' : '复制成功！'
+    const createFailText = locale === 'en' ? 'It fails to create UDF:' : '新建失败：'
+    const copyFailText = locale === 'en' ? 'It fails to copy UDF:' : '复制失败：'
 
     this.udfForm.validateFieldsAndScroll((err, values) => {
       if (!err) {
@@ -239,6 +246,18 @@ export class Udf extends React.PureComponent {
     })
   }
 
+  changeUdfStreamType = e => {
+    let value = e.target.value
+    this.setState({
+      streamType: value
+    })
+  }
+  changeUdfMapOrAgg = e => {
+    let value = e.target.value
+    this.setState({
+      mapOrAgg: value
+    })
+  }
   deleteUdfBtn = (record) => (e) => {
     this.props.onDeleteUdf(record.id, () => {
       message.success(operateLanguageText('success', 'delete'), 3)
@@ -355,8 +374,8 @@ export class Udf extends React.PureComponent {
   }
 
   render () {
-    const { udfClassHide } = this.props
-    const { refreshUdfLoading, refreshUdfText, showUdfDetail } = this.state
+    const { udfClassHide, modalLoading, roleType } = this.props
+    const { formType, formVisible, currentudfs, refreshUdfLoading, refreshUdfText, showUdfDetail, streamType } = this.state
 
     let { sortedInfo, filteredInfo } = this.state
     sortedInfo = sortedInfo || {}
@@ -446,7 +465,61 @@ export class Udf extends React.PureComponent {
       onFilterDropdownVisibleChange: visible => this.setState({
         filterDropdownVisibleJarName: visible
       }, () => this.searchInput.focus())
-    }, {
+    },
+    {
+      title: 'Stream Type',
+      dataIndex: 'streamType',
+      key: 'streamType',
+      // className: 'text-align-center',
+      sorter: (a, b) => a.streamType < b.streamType ? -1 : 1,
+      sortOrder: sortedInfo.columnKey === 'streamType' && sortedInfo.order,
+      filterDropdown: (
+        <div className="custom-filter-dropdown">
+          <Input
+            ref={ele => { this.searchInput = ele }}
+            placeholder="Stream Type"
+            value={this.state.searchTextStreamType}
+            onChange={this.onInputChange('searchTextStreamType')}
+            onPressEnter={this.onSearch('streamType', 'searchTextStreamType', 'filterDropdownVisibleStreamType')}
+          />
+          <Button
+            type="primary"
+            onClick={this.onSearch('streamType', 'searchTextStreamType', 'filterDropdownVisibleStreamType')}
+          >Search
+          </Button>
+        </div>
+      ),
+      filterDropdownVisible: this.state.filterDropdownVisibleStreamType,
+      onFilterDropdownVisibleChange: visible => this.setState({
+        filterDropdownVisibleStreamType: visible
+      }, () => this.searchInput.focus())
+    },
+    {
+      title: 'Map Or Agg',
+      dataIndex: 'mapOrAgg',
+      key: 'mapOrAgg',
+      filterDropdown: (
+        <div className="custom-filter-dropdown">
+          <Input
+            ref={ele => { this.searchInput = ele }}
+            placeholder="map or agg"
+            value={this.state.searchTextMapOrAgg}
+            onChange={this.onInputChange('searchTextMapOrAgg')}
+            onPressEnter={this.onSearch('mapOrAgg', 'searchTextMapOrAgg', 'filterDropdownVisibleMapOrAgg')}
+          />
+          <Button
+            type="primary"
+            onClick={this.onSearch('mapOrAgg', 'searchTextMapOrAgg', 'filterDropdownVisibleMapOrAgg')}
+          >Search
+          </Button>
+        </div>
+      ),
+      filterDropdownVisible: this.state.filterDropdownVisibleMapOrAgg,
+      onFilterDropdownVisibleChange: visible => this.setState({
+        filterDropdownVisibleMapOrAgg: visible
+      }, () => this.searchInput.focus())
+    },
+    {
       title: 'Description',
       dataIndex: 'desc',
       key: 'desc',
@@ -584,7 +657,7 @@ export class Udf extends React.PureComponent {
             <Button icon="edit" shape="circle" type="ghost" onClick={this.onShowEditUdf(record)}></Button>
           </Tooltip>
           {
-            localStorage.getItem('loginRoleType') === 'admin'
+            roleType === 'admin'
               ? (
                 <Popconfirm placement="bottom" title={<FormattedMessage {...messages.udfSureDelete} />} okText="Yes" cancelText="No" onConfirm={this.deleteUdfBtn(record)}>
                   <Tooltip title={<FormattedMessage {...messages.udfTableDelete} />}>
@@ -614,7 +687,6 @@ export class Udf extends React.PureComponent {
       }
     }
 
-    const { formType } = this.state
     let udfModalTitle = ''
     if (formType === 'add') {
       udfModalTitle = <FormattedMessage {...messages.udfModalAdd} />
@@ -638,7 +710,7 @@ export class Udf extends React.PureComponent {
             <Button icon="reload" type="ghost" className="refresh-button-style" loading={refreshUdfLoading} onClick={this.refreshUdf}>{refreshUdfText}</Button>
           </div>
           <Table
-            dataSource={this.state.currentudfs}
+            dataSource={currentudfs}
             columns={columns}
             onChange={this.handleUdfChange}
             pagination={pagination}
@@ -650,7 +722,7 @@ export class Udf extends React.PureComponent {
           title={udfModalTitle}
           okText="保存"
           wrapClassName="db-form-style"
-          visible={this.state.formVisible}
+          visible={formVisible}
           onCancel={this.hideForm}
           afterClose={this.resetModal}
           footer={[
@@ -666,7 +738,7 @@ export class Udf extends React.PureComponent {
               key="submit"
               size="large"
               type="primary"
-              loading={this.props.modalLoading}
+              loading={modalLoading}
               onClick={this.onModalOk}
             >
               <FormattedMessage {...messages.udfSave} />
@@ -674,7 +746,10 @@ export class Udf extends React.PureComponent {
           ]}
         >
           <UdfForm
-            type={this.state.formType}
+            type={formType}
+            streamType={streamType}
+            changeUdfStreamType={this.changeUdfStreamType}
+            changeUdfMapOrAgg={this.changeUdfMapOrAgg}
             ref={(f) => { this.udfForm = f }}
           />
         </Modal>
@@ -684,20 +759,21 @@ export class Udf extends React.PureComponent {
 }
 
 Udf.propTypes = {
-  // udfs: React.PropTypes.oneOfType([
-  //   React.PropTypes.bool,
-  //   React.PropTypes.array
+  // udfs: PropTypes.oneOfType([
+  //   PropTypes.bool,
+  //   PropTypes.array
   // ]),
-  modalLoading: React.PropTypes.bool,
-  projectIdGeted: React.PropTypes.string,
-  udfClassHide: React.PropTypes.string,
-  onLoadUdfs: React.PropTypes.func,
-  onLoadSingleUdf: React.PropTypes.func,
-  onAddUdf: React.PropTypes.func,
-  onLoadUdfDetail: React.PropTypes.func,
-  onEditUdf: React.PropTypes.func,
-  onDeleteUdf: React.PropTypes.func,
-  onChangeLanguage: React.PropTypes.func
+  modalLoading: PropTypes.bool,
+  projectIdGeted: PropTypes.string,
+  udfClassHide: PropTypes.string,
+  onLoadUdfs: PropTypes.func,
+  onLoadSingleUdf: PropTypes.func,
+  onAddUdf: PropTypes.func,
+  onLoadUdfDetail: PropTypes.func,
+  onEditUdf: PropTypes.func,
+  onDeleteUdf: PropTypes.func,
+  roleType: PropTypes.string,
+  locale: PropTypes.string
 }
 
 export function mapDispatchToProps (dispatch) {
@@ -707,15 +783,16 @@ export function mapDispatchToProps (dispatch) {
     onAddUdf: (values, resolve, reject) => dispatch(addUdf(values, resolve, reject)),
     onLoadUdfDetail: (udfId, resolve) => dispatch(loadUdfDetail(udfId, resolve)),
     onEditUdf: (values, resolve, reject) => dispatch(editUdf(values, resolve, reject)),
-    onDeleteUdf: (udfId, resolve, reject) => dispatch(deleteUdf(udfId, resolve, reject)),
-    onChangeLanguage: (type) => dispatch(changeLocale(type))
+    onDeleteUdf: (udfId, resolve, reject) => dispatch(deleteUdf(udfId, resolve, reject))
   }
 }
 
 const mapStateToProps = createStructuredSelector({
   udfs: selectUdfs(),
   error: selectError(),
-  modalLoading: selectModalLoading()
+  modalLoading: selectModalLoading(),
+  roleType: selectRoleType(),
+  locale: selectLocale()
 })
 
 export default connect(mapStateToProps, mapDispatchToProps)(Udf)

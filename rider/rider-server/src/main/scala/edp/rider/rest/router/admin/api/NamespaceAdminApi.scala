@@ -142,12 +142,12 @@ class NamespaceAdminApi(namespaceDal: NamespaceDal, databaseDal: NsDatabaseDal, 
                       }
                     } else {
                       riderLogger.info(s"user ${session.userId} check tables $tableNames format is wrong.")
-                      complete(OK, getHeader(402, s"$tableNames format is wrong", session))
+                      complete(OK, getHeader(402, s"begin with a letter, certain special characters as '_', '-', end with a letter or number", session))
                     }
                   case (_, None, None, None) => synchronizeNs(session, visible.getOrElse(true))
                   case (_, _, _, _) =>
                     riderLogger.error(s"user ${session.userId} request url is not supported.")
-                    complete(OK, getHeader(501, session))
+                    complete(OK, ResponseJson[String](getHeader(403, session), msgMap(403)))
                 }
               }
           }
@@ -173,7 +173,7 @@ class NamespaceAdminApi(namespaceDal: NamespaceDal, databaseDal: NsDatabaseDal, 
                     case Success(dbOpt) =>
                       riderLogger.info(s"user ${session.userId} select database where id is ${simple.nsDatabaseId} success.")
                       dbOpt match {
-                        case Some(db) =>
+                        case Some(_) =>
                           val nsSeq = new ArrayBuffer[Namespace]
                           simple.nsTables.map(nsTable => {
                             nsSeq += Namespace(0, simple.nsSys.trim, simple.nsInstance.trim, simple.nsDatabase.trim, nsTable.table.trim, "*", "*", "*", nsTable.key,
@@ -220,7 +220,7 @@ class NamespaceAdminApi(namespaceDal: NamespaceDal, databaseDal: NsDatabaseDal, 
                   }
                 } else {
                   riderLogger.info(s"user ${session.userId} check tables ${simple.nsTables.map(_.table).mkString(",")} format is wrong.")
-                  complete(OK, getHeader(402, s"${simple.nsTables.map(_.table).mkString(",")} format is wrong", session))
+                  complete(OK, getHeader(402, s"begin with a letter, certain special characters as '_', '-', end with a letter or number", session))
                 }
               }
           }
@@ -260,7 +260,7 @@ class NamespaceAdminApi(namespaceDal: NamespaceDal, databaseDal: NsDatabaseDal, 
                   }
                 } else {
                   riderLogger.info(s"user ${session.userId} check tables ${ns.nsTable} format is wrong.")
-                  complete(OK, getHeader(402, s"${ns.nsTable} format is wrong", session))
+                  complete(OK, getHeader(402, s"begin with a letter, certain special characters as '_', '-', end with a letter or number", session))
                 }
               }
           }
@@ -281,7 +281,12 @@ class NamespaceAdminApi(namespaceDal: NamespaceDal, databaseDal: NsDatabaseDal, 
                   complete(OK, getHeader(403, session))
                 }
                 else {
-                  onComplete(namespaceDal.updateUmsInfo(id, ums, session.userId).mapTo[Int]) {
+                  val umsFinal =
+                    if (ums.jsonSample.isEmpty || ums.jsonSample == null || ums.jsonSample.getOrElse("null") == "null")
+                      null
+                    else
+                      ums
+                  onComplete(namespaceDal.updateUmsInfo(id, umsFinal, session.userId).mapTo[Int]) {
                     case Success(_) =>
                       riderLogger.info(s"user ${session.userId} update namespace source schema success.")
                       complete(OK, ResponseJson[SourceSchema](getHeader(200, session), ums))
@@ -308,7 +313,11 @@ class NamespaceAdminApi(namespaceDal: NamespaceDal, databaseDal: NsDatabaseDal, 
                   complete(OK, getHeader(403, session))
                 }
                 else {
-                  onComplete(namespaceDal.updateSinkInfo(id, schema, session.userId).mapTo[Int]) {
+                  val schemaFinal =
+                    if (schema.jsonSample.isEmpty || schema.jsonSample == null || schema.jsonSample.getOrElse("null") == "null")
+                      null
+                    else schema
+                  onComplete(namespaceDal.updateSinkInfo(id, schemaFinal, session.userId).mapTo[Int]) {
                     case Success(_) =>
                       riderLogger.info(s"user ${session.userId} update namespace sink schema success.")
                       complete(OK, ResponseJson[SinkSchema](getHeader(200, session), schema))
@@ -363,9 +372,7 @@ class NamespaceAdminApi(namespaceDal: NamespaceDal, databaseDal: NsDatabaseDal, 
   }
 
 
-  private def getNsRoute(session: SessionClass, visible: Boolean): Route
-
-  = {
+  private def getNsRoute(session: SessionClass, visible: Boolean): Route = {
     onComplete(relProjectNsDal.getNamespaceAdmin(_.active === visible).mapTo[Seq[NamespaceAdmin]]) {
       case Success(res) =>
         riderLogger.info(s"user ${session.userId} select all namespaces success.")
@@ -381,23 +388,38 @@ class NamespaceAdminApi(namespaceDal: NamespaceDal, databaseDal: NsDatabaseDal, 
   private def synchronizeNs(session: SessionClass, visible: Boolean): Route
 
   = {
-    onComplete(namespaceDal.dbusInsert(session).mapTo[Seq[Dbus]]) {
-      case Success(dbusUpsert) =>
-        riderLogger.info(s"user ${session.userId} insertOrUpdate dbus table success.")
-        val namespaceDbus = namespaceDal.generateNamespaceSeqByDbus(dbusUpsert, session)
-        onComplete(namespaceDal.insertOrUpdate(namespaceDbus).mapTo[Int]) {
-          case Success(result) =>
-            riderLogger.info(s"user ${session.userId} insertOrUpdate $result dbus namespaces success.")
-            getNsRoute(session, visible)
-          case Failure(ex) =>
-            riderLogger.error(s"user ${session.userId} insertOrUpdate dbus namespaces failed", ex)
-            getNsRoute(session, visible)
-        }
-      case Failure(ex) =>
-        riderLogger.error(s"user ${session.userId} insertOrUpdate dbus table failed", ex)
+    try {
+      onComplete(namespaceDal.dbusInsert(session).mapTo[Seq[Dbus]]) {
+        case Success(dbusUpsert) =>
+          val (insertSeq, updateSeq) = namespaceDal.generateNamespaceSeqByDbus(dbusUpsert, session)
+          onComplete(namespaceDal.insert(insertSeq)) {
+            case Success(_) =>
+              riderLogger.info(s"user ${session.userId} insert dbus namespaces success.")
+              getNsRoute(session, visible)
+            //              onComplete(namespaceDal.update(updateSeq)) {
+            //                case Success(_) =>
+            //                  riderLogger.info(s"user ${session.userId} update dbus namespaces success.")
+            //                  getNsRoute(session, visible)
+            //                case Failure(ex) =>
+            //                  riderLogger.error(s"user ${session.userId} update dbus namespaces failed", ex)
+            //                  getNsRoute(session, visible)
+            //              }
+            case Failure(ex) =>
+              riderLogger.error(s"user ${session.userId} insertOrUpdate dbus namespaces failed", ex)
+              getNsRoute(session, visible)
+          }
+        case Failure(ex) =>
+          riderLogger.error(s"user ${session.userId} insertOrUpdate dbus table failed", ex)
+          getNsRoute(session, visible)
+      }
+    } catch {
+      case ex: Exception =>
+        riderLogger.error(s"user ${session.userId} synchronize dbus tables failed", ex)
         getNsRoute(session, visible)
     }
+
   }
+
 
   override def deleteRoute(route: String): Route
 
@@ -407,20 +429,26 @@ class NamespaceAdminApi(namespaceDal: NamespaceDal, databaseDal: NsDatabaseDal, 
         authenticateOAuth2Async[SessionClass]("rider", AuthorizationProvider.authorize) {
           session =>
             if (session.roleType != "admin") {
-              riderLogger.warn(s"${session.userId} has no permission to access it.")
+              riderLogger.warn(s"${
+                session.userId
+              } has no permission to access it.")
               complete(OK, getHeader(403, session))
             }
             else {
               try {
                 val result = namespaceDal.delete(id)
                 if (result._1) {
-                  riderLogger.error(s"user ${session.userId} delete namespace $id success.")
+                  riderLogger.error(s"user ${
+                    session.userId
+                  } delete namespace $id success.")
                   complete(OK, getHeader(200, session))
                 }
                 else complete(OK, getHeader(412, result._2, session))
               } catch {
                 case ex: Exception =>
-                  riderLogger.error(s"user ${session.userId} delete namespace $id failed", ex)
+                  riderLogger.error(s"user ${
+                    session.userId
+                  } delete namespace $id failed", ex)
                   complete(OK, getHeader(451, session))
               }
             }
@@ -433,22 +461,30 @@ class NamespaceAdminApi(namespaceDal: NamespaceDal, databaseDal: NsDatabaseDal, 
       authenticateOAuth2Async[SessionClass]("rider", AuthorizationProvider.authorize) {
         session =>
           if (session.roleType != "app") {
-            riderLogger.warn(s"${session.userId} has no permission to access it.")
+            riderLogger.warn(s"${
+              session.userId
+            } has no permission to access it.")
             complete(OK, getHeader(403, session))
           }
           else {
             try {
               onComplete(relProjectNsDal.getSinkNamespaceByUserId(session.userId).mapTo[Seq[NamespaceInfo]]) {
                 case Success(nsSeq) =>
-                  riderLogger.info(s"user ${session.userId} get sink namespaces success.")
+                  riderLogger.info(s"user ${
+                    session.userId
+                  } get sink namespaces success.")
                   complete(OK, ResponseSeqJson[NamespaceInfo](getHeader(200, session), nsSeq))
                 case Failure(ex) =>
-                  riderLogger.info(s"user ${session.userId} get sink namespaces failed", ex)
+                  riderLogger.info(s"user ${
+                    session.userId
+                  } get sink namespaces failed", ex)
                   complete(OK, getHeader(451, session))
               }
             } catch {
               case ex: Exception =>
-                riderLogger.error(s"user ${session.userId} get sink namespaces failed", ex)
+                riderLogger.error(s"user ${
+                  session.userId
+                } get sink namespaces failed", ex)
                 complete(OK, getHeader(451, session))
             }
           }

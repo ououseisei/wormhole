@@ -27,7 +27,7 @@ case class AppJob(name: Option[String],
                   sourceDatabase: String,
                   sourceTable: String,
                   sourceVersion: Option[String],
-                  sourceType: Option[String],
+                  jobType: String,
                   sourceConfig: Option[String],
                   sinkSys: String,
                   sinkInstance: String,
@@ -42,17 +42,7 @@ case class AppJob(name: Option[String],
                   sparkConfig: Option[String],
                   startConfig: Option[String])
 
-case class AppFlow(sourceSys: String,
-                   sourceDatabase: String,
-                   sourceTable: String,
-                   consumedProtocol: Option[String],
-                   sinkSys: String,
-                   sinkInstance: String,
-                   sinkDatabase: String,
-                   sinkTable: String,
-                   sinkKeys: String,
-                   sinkColumns: String,
-                   sinkConfig: String)
+case class AppFlow(sourceSys: String, sourceDatabase: String, sourceTable: String, config: Option[String], consumedProtocol: Option[String], sinkSys: String, sinkInstance: String, sinkDatabase: String, sinkTable: String, sinkKeys: String, sinkColumns: String, sinkConfig: String)
 
 case class AppFlowResponse(flowId: Long, status: String)
 

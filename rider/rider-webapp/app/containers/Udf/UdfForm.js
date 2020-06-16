@@ -19,6 +19,9 @@
  */
 
 import React from 'react'
+import PropTypes from 'prop-types'
+import { connect } from 'react-redux'
+import { createStructuredSelector } from 'reselect'
 
 import Form from 'antd/lib/form'
 import Row from 'antd/lib/row'
@@ -28,23 +31,56 @@ const FormItem = Form.Item
 import Radio from 'antd/lib/radio'
 const RadioGroup = Radio.Group
 const RadioButton = Radio.Button
+import { selectLocale } from '../LanguageProvider/selectors'
 
 export class UdfForm extends React.Component {
+
   render () {
     const { getFieldDecorator } = this.props.form
-    const { type } = this.props
-    const languageText = localStorage.getItem('preferredLanguage')
-
+    const { type, locale, streamType } = this.props
     const itemStyle = {
       labelCol: { span: 6 },
       wrapperCol: { span: 16 }
     }
-
-    const disabledOrNot = type === 'edit'
+    const udfDisabledOrNot = type === 'edit'
 
     return (
       <Form>
         <Row gutter={8}>
+          <Col span={24}>
+            <FormItem label="Stream type" {...itemStyle}>
+              {getFieldDecorator('streamType', {
+                rules: [{
+                  required: true,
+                  message: locale === 'en' ? 'Stream type cannot be empty' : 'Stream Type 不能为空'
+                }],
+                initialValue: 'spark'
+              })(
+                <RadioGroup className="radio-group-style" disabled={udfDisabledOrNot} size="default" onChange={this.props.changeUdfStreamType}>
+                  <RadioButton value="spark" className="radio-btn-style radio-btn-extra">Spark</RadioButton>
+                  <RadioButton value="flink" className="radio-btn-style radio-btn-extra">Flink</RadioButton>
+                </RadioGroup>
+              )}
+            </FormItem>
+          </Col>
+          <Col span={24}>
+            <FormItem label="map or agg" {...itemStyle}>
+              {getFieldDecorator('mapOrAgg', {
+                rules: [{
+                  required: true,
+                  message: locale === 'en' ? 'Map or agg cannot be empty' : 'map or agg 不能为空'
+                }],
+                initialValue: 'udf'
+              })(
+                <RadioGroup className="radio-group-style" disabled={udfDisabledOrNot} size="default" onChange={this.props.changeUdfMapOrAgg}>
+                  <RadioButton value="udf" className="radio-btn-style radio-btn-extra">udf</RadioButton>
+                  {
+                    streamType === 'flink' ? (<RadioButton value="udaf" className="radio-btn-style radio-btn-extra">udaf</RadioButton>) : ''
+                  }
+                </RadioGroup>
+              )}
+            </FormItem>
+          </Col>
           <Col span={24}>
             <FormItem className="hide">
               {getFieldDecorator('id', {
@@ -57,10 +93,10 @@ export class UdfForm extends React.Component {
               {getFieldDecorator('functionName', {
                 rules: [{
                   required: true,
-                  message: languageText === 'en' ? 'Function Name cannot be empty' : 'Function Name 不能为空'
+                  message: locale === 'en' ? 'Function Name cannot be empty' : 'Function Name 不能为空'
                 }]
               })(
-                <Input placeholder="Function Name" disabled={disabledOrNot} />
+                <Input placeholder="Function Name" disabled={type === 'edit'} />
               )}
             </FormItem>
           </Col>
@@ -78,33 +114,35 @@ export class UdfForm extends React.Component {
               {getFieldDecorator('fullName', {
                 rules: [{
                   required: true,
-                  message: languageText === 'en' ? 'Please fill in full class name' : '请填写 Full Class Name'
+                  message: locale === 'en' ? 'Please fill in full class name' : '请填写 Full Class Name'
                 }]
               })(
-                <Input placeholder="Full Class Name" disabled={disabledOrNot} />
+                <Input placeholder="Full Class Name" disabled={type === 'edit'} />
               )}
             </FormItem>
           </Col>
-
-          <Col span={24}>
-            <FormItem label="Jar Name" {...itemStyle}>
-              {getFieldDecorator('jarName', {
-                rules: [{
-                  required: true,
-                  message: languageText === 'en' ? 'Please fill in jar name' : '请填写 Jar Name'
-                }]
-              })(
-                <Input placeholder="Jar Name" />
-              )}
-            </FormItem>
-          </Col>
-
+          {
+            streamType === 'spark' ? (
+              <Col span={24}>
+                <FormItem label="Jar Name" {...itemStyle}>
+                  {getFieldDecorator('jarName', {
+                    rules: [{
+                      required: true,
+                      message: locale === 'en' ? 'Please fill in jar name' : '请填写 Jar Name'
+                    }]
+                  })(
+                    <Input placeholder="Jar Name" />
+                  )}
+                </FormItem>
+              </Col>
+            ) : ''
+          }
           <Col span={24}>
             <FormItem label="Public" {...itemStyle}>
               {getFieldDecorator('public', {
                 rules: [{
                   required: true,
-                  message: languageText === 'en' ? 'Please fill in public' : '请填写 Public'
+                  message: locale === 'en' ? 'Please fill in public' : '请填写 Public'
                 }],
                 initialValue: 'true'
               })(
@@ -122,8 +160,16 @@ export class UdfForm extends React.Component {
 }
 
 UdfForm.propTypes = {
-  form: React.PropTypes.any,
-  type: React.PropTypes.string
+  form: PropTypes.any,
+  type: PropTypes.string,
+  locale: PropTypes.string,
+  streamType: PropTypes.string,
+  changeUdfStreamType: PropTypes.func,
+  changeUdfMapOrAgg: PropTypes.func
 }
 
-export default Form.create({wrappedComponentRef: true})(UdfForm)
+const mapStateToProps = createStructuredSelector({
+  locale: selectLocale()
+})
+
+export default Form.create({wrappedComponentRef: true})(connect(mapStateToProps, null)(UdfForm))

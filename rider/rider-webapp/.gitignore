@@ -4,6 +4,8 @@ build
 node_modules
 stats.json
 pom.xml
+.vscode
+node_modules.zip
 
 # Cruft
 .DS_Store

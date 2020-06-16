@@ -19,6 +19,7 @@
  */
 
 import React from 'react'
+import PropTypes from 'prop-types'
 import { connect } from 'react-redux'
 import { createStructuredSelector } from 'reselect'
 
@@ -96,9 +97,9 @@ class SecondNavigator extends React.Component {
           <MenuItem key="workbench" className={`ri-menu-item ri-menu-item-extra ${secondNavSelectedClass[0]}`}>
             <Icon type="desktop" />Workbench
           </MenuItem>
-          <MenuItem key="performance" className={`ri-menu-item ri-menu-item-extra ${secondNavSelectedClass[1]}`}>
+          {/* <MenuItem key="performance" className={`ri-menu-item ri-menu-item-extra ${secondNavSelectedClass[1]}`}>
             <Icon type="bar-chart" />Performance
-          </MenuItem>
+          </MenuItem> */}
         </Menu>
       </div>
     )
@@ -117,9 +118,9 @@ const mapStateToProps = createStructuredSelector({
 })
 
 SecondNavigator.propTypes = {
-  router: React.PropTypes.any,
-  params: React.PropTypes.any,
-  onLoadSingleProject: React.PropTypes.func
+  router: PropTypes.any,
+  params: PropTypes.any,
+  onLoadSingleProject: PropTypes.func
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(SecondNavigator)

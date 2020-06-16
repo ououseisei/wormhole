@@ -27,14 +27,14 @@ const selectStreams = () => createSelector(
   (streamState) => streamState.get('streams')
 )
 
+const selectFlows = () => createSelector(
+  selectStream(),
+  (streamState) => streamState.get('flows')
+)
+
 const selectStreamSubmitLoading = () => createSelector(
   selectStream(),
   (streamState) => streamState.get('streamSubmitLoading')
-)
-
-const selectStreamNameExited = () => createSelector(
-  selectStream(),
-  (streamState) => streamState.get('streamNameExited')
 )
 
 const selectStreamStartModalLoading = () => createSelector(
@@ -42,10 +42,22 @@ const selectStreamStartModalLoading = () => createSelector(
   (streamState) => streamState.get('streamStartModalLoading')
 )
 
+const selectFlowsLoading = () => createSelector(
+  selectStream(),
+  (streamState) => streamState.get('flowsLoading')
+)
+
+const selectFlowsPriorityConfirmLoading = () => createSelector(
+  selectStream(),
+  (streamState) => streamState.get('flowsPriorityConfirmLoading')
+)
+
 export {
   selectStream,
   selectStreams,
+  selectFlows,
   selectStreamSubmitLoading,
-  selectStreamNameExited,
-  selectStreamStartModalLoading
+  selectStreamStartModalLoading,
+  selectFlowsLoading,
+  selectFlowsPriorityConfirmLoading
 }

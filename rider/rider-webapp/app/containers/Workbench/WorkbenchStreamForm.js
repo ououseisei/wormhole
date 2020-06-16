@@ -19,12 +19,14 @@
  */
 
 import React from 'react'
+import PropTypes from 'prop-types'
+import { connect } from 'react-redux'
+import { createStructuredSelector } from 'reselect'
 require('../../../node_modules/codemirror/addon/display/placeholder')
 require('../../../node_modules/codemirror/mode/javascript/javascript')
 import { FormattedMessage } from 'react-intl'
 import messages from './messages'
 
-import { forceCheckSave, operateLanguageSelect } from '../../utils/util'
 import Form from 'antd/lib/form'
 const FormItem = Form.Item
 import Row from 'antd/lib/row'
@@ -41,21 +43,37 @@ const RadioButton = Radio.Button
 import Select from 'antd/lib/select'
 const Option = Select.Option
 
+import { operateLanguageSelect } from '../../utils/util'
+import { loadStreamNameValue } from '../Manager/action'
+import { selectLocale } from '../LanguageProvider/selectors'
+
 export class WorkbenchStreamForm extends React.PureComponent {
   constructor (props) {
     super(props)
-    this.state = { streamMode: '' }
+    this.state = {
+      streamMode: ''
+    }
   }
 
   componentWillReceiveProps (props) {
     this.setState({ streamMode: props.streamMode })
   }
 
-  // 验证 stream name 是否存在
-  onNameInputChange = (e) => this.props.onInitStreamNameValue(e.target.value)
+  checkStreamName = (rule, value = '', callback) => {
+    const { onLoadStreamNameValue, projectId, locale } = this.props
+
+    const reg = /^[a-zA-Z0-9_-]*$/
+    if (reg.test(value)) {
+      onLoadStreamNameValue(projectId, value, res => callback(), (err) => callback(err))
+    } else {
+      const textZh = '必须是字母、数字、下划线或中划线'
+      const textEn = 'It should be letters, figures, underscore or hyphen'
+      callback(locale === 'en' ? textEn : textZh)
+    }
+  }
 
   render () {
-    const { isWormhole, onShowConfigModal, streamConfigCheck, kafkaValues } = this.props
+    const { isWormhole, onShowConfigModal, streamConfigCheck, kafkaValues, locale, streamSubPanelKey } = this.props
     const { streamMode } = this.state
     const { getFieldDecorator } = this.props.form
     const itemStyle = {
@@ -63,17 +81,9 @@ export class WorkbenchStreamForm extends React.PureComponent {
       wrapperCol: { span: 17 }
     }
 
-    // edit 时，不能修改部分元素
-    let disabledOrNot = false
-    if (streamMode === 'add') {
-      disabledOrNot = false
-    } else if (streamMode === 'edit') {
-      disabledOrNot = true
-    }
-
     const kafkaOptions = kafkaValues.map(s => (<Option key={s.id} value={`${s.id}`}>{s.nsInstance}</Option>))
 
-    const streamConfigTag = streamConfigCheck === true
+    const streamConfigTag = streamConfigCheck
       ? (
         <Tag color="#7CB342" onClick={onShowConfigModal}>
           <Icon type="check-circle-o" /> <FormattedMessage {...messages.workbenchConfigBtn} />
@@ -91,9 +101,10 @@ export class WorkbenchStreamForm extends React.PureComponent {
         <Tooltip title={<FormattedMessage {...messages.workbenchHelp} />} placement="bottom">
           <Popover
             placement="top"
-            content={<div style={{ width: '221px', height: '25px' }}>
-              <p><FormattedMessage {...messages.workbenchTransResource} /></p>
-            </div>}
+            content={
+              <div style={{ width: '221px', height: '25px' }}>
+                <p><FormattedMessage {...messages.workbenchTransResource} /></p>
+              </div>}
             title={<h3><FormattedMessage {...messages.workbenchHelp} /></h3>}
             trigger="click">
             <Icon type="question-circle-o" className="question-class" />
@@ -102,37 +113,55 @@ export class WorkbenchStreamForm extends React.PureComponent {
       </span>
     )
 
-    const languageText = localStorage.getItem('preferredLanguage')
     return (
       <Form className="ri-workbench-form workbench-stream-form">
         <Row gutter={8}>
+
+          <Col span={24}>
+            <FormItem label="Stream type" {...itemStyle}>
+              {getFieldDecorator('streamType', {
+                rules: [{
+                  required: true,
+                  message: operateLanguageSelect('type', 'Type')
+                }],
+                initialValue: 'spark'
+              })(
+                <RadioGroup className="radio-group-style" disabled={streamMode === 'edit'} size="default" onChange={this.props.changeStreamType('stream')}>
+                  <RadioButton value="spark" className="radio-btn-style radio-btn-extra">Spark</RadioButton>
+                  <RadioButton value="flink" className="radio-btn-style radio-btn-extra">Flink</RadioButton>
+                </RadioGroup>
+              )}
+            </FormItem>
+          </Col>
           <Col span={24}>
             <FormItem label="Name" {...itemStyle}>
               {getFieldDecorator('streamName', {
                 rules: [{
                   required: true,
-                  message: languageText === 'en' ? 'Name cannot be empty' : 'Name 不能为空'
+                  message: locale === 'en' ? 'Name cannot be empty' : 'Name 不能为空'
                 }, {
-                  validator: forceCheckSave
+                  validator: this.checkStreamName
                 }]
               })(
-                <Input placeholder="Name" disabled={disabledOrNot} onChange={this.onNameInputChange} />
+                <Input placeholder="Name" disabled={streamMode === 'edit'} />
               )}
             </FormItem>
           </Col>
 
           <Col span={24}>
-            <FormItem label="Type" {...itemStyle}>
+            <FormItem label="Function type" {...itemStyle}>
               {getFieldDecorator('type', {
                 rules: [{
                   required: true,
                   message: operateLanguageSelect('type', 'Type')
-                }]
+                }],
+                initialValue: 'default'
               })(
-                <RadioGroup className="radio-group-style" disabled={disabledOrNot} size="default">
+                <RadioGroup className="radio-group-style" disabled={streamMode === 'edit'} size="default">
                   <RadioButton value="default" className="radio-btn-style radio-btn-extra">Default</RadioButton>
-                  <RadioButton value="hdfslog" className="radio-btn-style radio-btn-extra">Hdfslog</RadioButton>
-                  <RadioButton value="routing" className="radio-btn-style radio-btn-final">Routing</RadioButton>
+                  <RadioButton value="hdfslog" className={`radio-btn-style radio-btn-extra ${streamSubPanelKey === 'flink' ? 'hide' : ''}`}>Hdfslog</RadioButton>
+                  <RadioButton value="routing" className={`radio-btn-style radio-btn-extra ${streamSubPanelKey === 'flink' ? 'hide' : ''}`}>Routing</RadioButton>
+                  <RadioButton value="hdfscsv" className={`radio-btn-style radio-btn-extra ${streamSubPanelKey === 'flink' ? 'hide' : ''}`}>Hdfscsv</RadioButton>
                 </RadioGroup>
               )}
             </FormItem>
@@ -159,7 +188,7 @@ export class WorkbenchStreamForm extends React.PureComponent {
                 <Select
                   dropdownClassName="ri-workbench-select-dropdown"
                   placeholder="Select a Kafka"
-                  disabled={disabledOrNot}
+                  disabled={streamMode === 'edit'}
                 >
                   {kafkaOptions}
                 </Select>
@@ -177,6 +206,18 @@ export class WorkbenchStreamForm extends React.PureComponent {
               </div>
             </div>
           </Col>
+          <Col span={24}>
+            <FormItem label="Special Config" {...itemStyle}>
+              {getFieldDecorator('specialConfig', {})(
+                <textarea
+                  placeholder="Paste your Sink Config JSON here."
+                  className="ant-input ant-input-extra"
+                  rows="5">
+                </textarea>
+              )}
+            </FormItem>
+          </Col>
+
           <Col span={24} className="hide">
             <FormItem>
               {getFieldDecorator('config', {})(<Input />)}
@@ -188,7 +229,7 @@ export class WorkbenchStreamForm extends React.PureComponent {
               {getFieldDecorator('sourceTopicName', {
                 rules: [{
                   required: true,
-                  message: languageText === 'en' ? 'Source topic name cannot be empty' : 'Source Topic Name 不能为空'
+                  message: locale === 'en' ? 'Source topic name cannot be empty' : 'Source Topic Name 不能为空'
                 }],
                 hidden: isWormhole
               })(
@@ -211,7 +252,7 @@ export class WorkbenchStreamForm extends React.PureComponent {
               {getFieldDecorator('sinkTopicName', {
                 rules: [{
                   required: true,
-                  message: languageText === 'en' ? 'Sink topic name cannot be empty' : 'Sink Topic Name 不能为空'
+                  message: locale === 'en' ? 'Sink topic name cannot be empty' : 'Sink Topic Name 不能为空'
                 }],
                 hidden: isWormhole
               })(
@@ -236,12 +277,26 @@ export class WorkbenchStreamForm extends React.PureComponent {
 }
 
 WorkbenchStreamForm.propTypes = {
-  form: React.PropTypes.any,
-  isWormhole: React.PropTypes.bool,
-  kafkaValues: React.PropTypes.array,
-  onShowConfigModal: React.PropTypes.func,
-  onInitStreamNameValue: React.PropTypes.func,
-  streamConfigCheck: React.PropTypes.bool
+  form: PropTypes.any,
+  isWormhole: PropTypes.bool,
+  kafkaValues: PropTypes.array,
+  onShowConfigModal: PropTypes.func,
+  onLoadStreamNameValue: PropTypes.func,
+  streamConfigCheck: PropTypes.bool,
+  projectId: PropTypes.string,
+  locale: PropTypes.string,
+  changeStreamType: PropTypes.func,
+  streamSubPanelKey: PropTypes.string
 }
 
-export default Form.create({wrappedComponentRef: true})(WorkbenchStreamForm)
+function mapDispatchToProps (dispatch) {
+  return {
+    onLoadStreamNameValue: (projectId, name, resolve, reject) => dispatch(loadStreamNameValue(projectId, name, resolve, reject))
+  }
+}
+
+const mapStateToProps = createStructuredSelector({
+  locale: selectLocale()
+})
+
+export default Form.create({wrappedComponentRef: true})(connect(mapStateToProps, mapDispatchToProps)(WorkbenchStreamForm))

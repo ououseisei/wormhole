@@ -21,32 +21,42 @@
 
 package edp.rider.rest.util
 
+import java.time.ZonedDateTime
+
 import com.alibaba.fastjson.JSON
 import edp.rider.common.RiderLogger
-import edp.wormhole.common.util.DateUtils._
-import edp.wormhole.common.util.DtFormat
+import edp.wormhole.util.DateUtils._
+import edp.wormhole.util.DtFormat
 
 import scala.concurrent.duration._
 
 object CommonUtils extends RiderLogger {
 
+  def getTimeZoneId = ZonedDateTime.now().getOffset.getId
+
   def currentSec = yyyyMMddHHmmssToString(currentyyyyMMddHHmmss, DtFormat.TS_DASH_SEC)
+
+  def currentNodSec = yyyyMMddHHmmssToString(currentyyyyMMddHHmmss, DtFormat.TS_NOD_SEC)
 
   def currentMillSec = yyyyMMddHHmmssToString(currentyyyyMMddHHmmss, DtFormat.TS_DASH_MILLISEC)
 
   def currentMicroSec = yyyyMMddHHmmssToString(currentyyyyMMddHHmmss, DtFormat.TS_DASH_MICROSEC)
 
+  def currentNodMicroSec = yyyyMMddHHmmssToString(currentyyyyMMddHHmmss, DtFormat.TS_NOD_MILLISEC)
+
   def minTimeOut = 120.seconds
 
-  def maxTimeOut = 600.seconds
+  def maxTimeOut = 5.minute
 
   def streamSubmitTimeout = 120.seconds
 
   val keyEqualValuePattern = "([a-zA-Z]+[a-zA-z0-9\\_\\-\\.]*=[a-zA-Z0-9]+[a-zA-z0-9\\_\\-\\.]*(&[a-zA-Z]+[a-zA-z0-9\\_\\-\\.]*=[a-zA-Z0-9]+[a-zA-z0-9\\_\\-\\.]*)*)".r.pattern
 
-  val streamSparkConfigPattern = "(.+=.+(,.+.+)*)".r.pattern
+  val keyEqualValuePatternSimple = "([a-zA-Z]+[\\S ]*=[a-zA-Z0-9]+[\\S ]*(&[a-zA-Z]+[\\S ]*=[a-zA-Z0-9]+[\\S ]*)*)".r.pattern
 
-  val namePattern = "[a-zA-Z]+[a-zA-z0-9\\_\\-]*[a-zA-z0-9]".r.pattern
+  val streamConfigPattern = "(.+=.+(,.+.+)*)".r.pattern
+
+  val namePattern = "[^\\.]*".r.pattern
 
   def formatResponseTimestamp(time: Option[String]): Option[String] = {
     if (time.getOrElse("") == "") Some("")
@@ -77,12 +87,13 @@ object CommonUtils extends RiderLogger {
   def isKeyEqualValue(str: String): Boolean = {
     if (str == "" || str == null)
       return true
-    keyEqualValuePattern.matcher(str.split(",").mkString("&")).matches()
+    keyEqualValuePatternSimple.matcher(str.split(",").mkString("&")).matches()
   }
 
-  def isStreamSparkConfig(str: String): Boolean = {
+  def isStreamConfig(str: String): Boolean = {
     if (str == "" || str == null)
       return true
-    streamSparkConfigPattern.matcher(str).matches()
+    streamConfigPattern.matcher(str).matches()
   }
+
 }

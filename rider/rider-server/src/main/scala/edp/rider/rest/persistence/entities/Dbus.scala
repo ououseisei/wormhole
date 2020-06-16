@@ -33,7 +33,11 @@ case class Dbus(id: Long,
                 instanceId: Long,
                 databaseId: Long,
                 createTime: String,
-                synchronizedTime: String) extends BaseEntity
+                synchronizedTime: String) extends BaseEntity {
+  override def copyWithId(id: Long): this.type = {
+    copy(id = id).asInstanceOf[this.type]
+  }
+}
 
 
 case class SimpleDbus(id: Long,
@@ -42,6 +46,11 @@ case class SimpleDbus(id: Long,
                       topic: String,
                       createTime: String) extends SimpleBaseEntity
 
+case class DBusNamespaceResponse(status: String,
+                                 message: String,
+                                 payload: Seq[SimpleDbus])
+
+case class DBusUser(email: String, password: String)
 
 class DbusTable(_tableTag: Tag) extends BaseTable[Dbus](_tableTag, "dbus") {
   def * = (id, dbusId, namespace, kafka, topic, instanceId, databaseId, createTime, synchronizedTime) <> (Dbus.tupled, Dbus.unapply)

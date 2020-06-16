@@ -31,17 +31,25 @@ case class Udf(id: Long,
                jarName: String,
                desc: Option[String],
                pubic: Boolean,
+               streamType: String,
+               mapOrAgg: String,
                createTime: String,
                createBy: Long,
                updateTime: String,
-               updateBy: Long) extends BaseEntity
+               updateBy: Long) extends BaseEntity {
+  override def copyWithId(id: Long): this.type = {
+    copy(id = id).asInstanceOf[this.type]
+  }
+}
 
 
 case class SimpleUdf(functionName: String,
                      fullClassName: String,
                      jarName: String,
                      desc: Option[String],
-                     public: Boolean) extends SimpleBaseEntity
+                     public: Boolean,
+                     streamType: String,
+                     mapOrAgg: String) extends SimpleBaseEntity
 
 case class UdfProjectName(udfId: Long,
                           name: String)
@@ -52,6 +60,8 @@ case class UdfProject(id: Long,
                       jarName: String,
                       desc: Option[String],
                       pubic: Boolean,
+                      streamType: String,
+                      mapOrAgg: String,
                       createTime: String,
                       createBy: Long,
                       updateTime: String,
@@ -59,14 +69,15 @@ case class UdfProject(id: Long,
                       projectNames: String)
 
 class UdfTable(_tableTag: Tag) extends BaseTable[Udf](_tableTag, "udf") {
-  def * = (id, functionName, fullClassName, jarName, desc, public, createTime, createBy, updateTime, updateBy) <> (Udf.tupled, Udf.unapply)
+  def * = (id, functionName, fullClassName, jarName, desc, public, streamType, mapOrAgg, createTime, createBy, updateTime, updateBy) <> (Udf.tupled, Udf.unapply)
 
   val functionName: Rep[String] = column[String]("function_name", O.Length(200, varying = true))
   val fullClassName: Rep[String] = column[String]("full_class_name", O.Length(200, varying = true))
   val jarName: Rep[String] = column[String]("jar_name", O.Length(200, varying = true))
   val desc: Rep[Option[String]] = column[Option[String]]("desc", O.Length(200, varying = true), O.Default(None))
   val public: Rep[Boolean] = column[Boolean]("public")
-
+  val streamType: Rep[String] =  column[String]("stream_type", O.Length(100, varying = true))
+  val mapOrAgg: Rep[String] =  column[String]("map_or_agg", O.Length(100, varying = true))
   val index1 = index("functionName_UNIQUE", functionName, unique = true)
   val index2 = index("fullClassName_UNIQUE", fullClassName, unique = true)
 }

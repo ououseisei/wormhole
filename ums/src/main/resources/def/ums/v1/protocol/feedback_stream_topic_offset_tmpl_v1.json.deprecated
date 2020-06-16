@@ -1,0 +1,40 @@
+{
+  "protocol": {
+    "type": "feedback_stream_topic_offset"
+  },
+  "schema": {
+    "namespace": "",
+    "fields": [
+      {
+        "name": "ums_ts_",
+        "type": "datetime",
+        "nullable": false
+      },
+      {
+        "name": "stream_id",
+        "type": "long",
+        "nullable": false
+      },
+      {
+        "name": "topic_name",
+        "type": "string",
+        "nullable": false
+      },
+      {
+        "name": "partition_offsets",
+        "type": "string",
+        "nullable": false
+      },
+      {
+        "name": "batch_id",
+        "type": "string",
+        "nullable": false
+      }
+    ]
+  },
+  "payload": [
+    {
+      "tuple": [ "2016-11-22 00:00:00",10, "topic1","0:12312,1:324234","abc"]
+    }
+  ]
+}

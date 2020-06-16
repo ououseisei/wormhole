@@ -2,7 +2,7 @@
 layout: global
 displayTitle: Concept
 title: Concept
-description: Wormhole WH_VERSION_SHORT Concept page
+description: Wormhole Concept page
 ---
 
 * This will become a table of contents (this text will be scraped).
@@ -21,7 +21,7 @@ Namespace是Wormhole定义的唯一定位数据系统上数据表的规范，由
 - Database Partition 代表 Database 的分区名称（目前 Wormhole 中处理时用“*”匹配所有分区的数据）
 - Table Partition 代表 Table 的分表名称（目前 Wormhole 中处理时用“*”匹配所有分表的数据）
 
-例如：mysql.test.social.user.*.*.*    kafka.test.social.user.*.*.*
+例如：`mysql.test.social.user.*.*.*    kafka.test.social.user.*.*.*`
 
 ## UMS（统一消息规范）
 
@@ -106,6 +106,8 @@ namespace 指定消息的来源，fields 指定表结构信息，其中 `ums_id_
 
 **若一个 sourceNamespace 的消息需要随机分配到多个 partition，消息的 key 可设置为`data_increment_data.kafka.kafka01.datatopic.user.*.*.*...abc 或 data_increment_data.kafka.kafka01.datatopic.user.*.*.*...bcd`，即在 sourceNamespace 后面添加“…”，之后可添加随机数或任意字符。**
 
+**若 UMS_Extension 类型数据有增删改操作且需要幂等写入，也须配置 `ums_id_,ums_ts_,ums_op_` 三个字段。具体配置方式请参考 Admin-Guide Namespace章节。**
+
 ## Stream
 
 Stream 是在 Spark Streaming 上封装的一层计算框架，消费的数据源是 Kafka。Stream 作为 Wormhole 的流式计算引擎，匹配消息的 key，sourceNamespace 和其对应处理逻辑，可将数据以幂等的方式写入多种数据系统中。处理过程中 Stream 会反馈错误信息、心跳信息、处理数据量及延时等信息。
@@ -122,6 +124,8 @@ Flow 配置好后可以注册到 Stream，Stream 接收 Flow 指令后，根据�
 
 ## Job 
 
-Job 相当于 Spark Job，其数据源是 Hdfs。Stream/Flow/Job 组合可实现 Lambda 架构和 Kappa 架构。
+Job 相当于 Spark Job，其数据源是 HdfsLog Stream 备份在 Hdfs 上的数据。Stream/Flow/Job 组合可实现 Lambda 架构和 Kappa 架构。
 
 Kafka 中数据有一定的生命周期，可通过 Stream 将 Kafka 中数据备份到 Hdfs 上。后续需要从某个时间节点重新计算或者补充某个时间段的数据，可通过 Job 读取 Hdfs上 的备份数据，配置与 Flow 相同的处理逻辑，将数据写入目标表。
+
+**注意：目前 UMS_Extension 类型数据只支持通过 Stream 将 Kafak 中数据备份到 Hdfs 上，Job 还不支持读取 UMS_Extension 类型数据。**

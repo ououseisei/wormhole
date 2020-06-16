@@ -73,7 +73,14 @@ import {
   EDIT_FLOWS_SUCCESS,
   LOAD_SOURCEINPUT,
   LOAD_SOURCEINPUT_SUCCESS,
-  LOAD_SOURCEINPUT_ERROR
+  LOAD_SOURCEINPUT_ERROR,
+  STARTFLINK_FLOWS,
+  STARTFLINK_FLOWS_SUCCESS,
+  OPERATE_FLOWS_ERROR,
+  LOAD_RECHARGE_HISTORY,
+  LOAD_RECHARGE_HISTORY_SUCCESS,
+  COMFIRM_RECHARGE,
+  COMFIRM_RECHARGE_SUCCESS
 } from './constants'
 import { fromJS } from 'immutable'
 
@@ -81,7 +88,10 @@ const initialState = fromJS({
   flows: false,
   error: false,
   flowSubmitLoading: false,
-  sourceToSinkExited: false
+  sourceToSinkExited: false,
+  flowStartModalLoading: false,
+  rechargeHistoryLoading: false,
+  confirmRechargeLoading: false
 })
 
 function flowReducer (state = initialState, { type, payload }) {
@@ -139,21 +149,26 @@ function flowReducer (state = initialState, { type, payload }) {
     case OPERATE_USER_FLOW:
       return state.set('error', false)
     case OPERATE_USER_FLOW_SUCCESS:
-      if (typeof (payload.result) === 'string') {
+      if (typeof payload.result === 'string') {
+        // 删除操作
         return state.set('flows', flows.filter(g => payload.result.split(',').indexOf(`${g.id}`) < 0))
       } else {
-        const startIndex = flows.indexOf(flows.find(g => Object.is(g.id, payload.result.id)))
-        if (payload.result.length === undefined) {
-          flows.fill(payload.result, startIndex, startIndex + 1)
-        } else {
-          for (let i = 0; i < payload.result.length; i++) {
-            flows.fill(payload.result[i], startIndex, startIndex + 1)
+        if (payload.result.length) {
+          // 批量操作
+          for (let j = 0; j < flows.length; j++) {
+            for (let i = 0; i < payload.result.length; i++) {
+              flows[j] = flows[j].id === payload.result[i].id ? payload.result[i] : flows[j]
+            }
           }
+          return state.set('flows', flows.slice())
+        } else {
+          // 单行操作
+          const flowsFinal = flows.map(t => t.id === payload.result.id ? payload.result : t)
+          return state.set('flows', flowsFinal.slice())
         }
-        return state.set('flows', flows.slice())
       }
     case OPERATE_FLOW_ERROR:
-      return state
+      return state.set('confirmRechargeLoading', false)
     case LOAD_FLOW_DETAIL:
       return state
     case LOAD_FLOW_DETAIL_SUCCESS:
@@ -166,7 +181,7 @@ function flowReducer (state = initialState, { type, payload }) {
     case QUERY_FLOW_SUCCESS:
       return state
     case LOAD_FLOWS_ERROR:
-      return state.set('error', payload.error)
+      return state.set('error', payload.error).set('rechargeHistoryLoading', false)
     case LOAD_SOURCELOG_DETAIL:
       return state.set('error', false)
     case LOAD_SOURCELOG_DETAIL_SUCCESS:
@@ -223,6 +238,28 @@ function flowReducer (state = initialState, { type, payload }) {
       return state
         .set('flows', flows.slice())
         .set('flowSubmitLoading', false)
+    case STARTFLINK_FLOWS:
+      return state.set('flowStartModalLoading', true)
+    case STARTFLINK_FLOWS_SUCCESS:
+      const startIndexStartOrRenew = flows.indexOf(flows.find(p => Object.is(p.id, payload.result.id)))
+      flows[startIndexStartOrRenew].disableActions = payload.result.disableActions
+      flows[startIndexStartOrRenew].startedTime = payload.result.startedTime
+      flows[startIndexStartOrRenew].stoppedTime = payload.result.stoppedTime
+      flows[startIndexStartOrRenew].status = payload.result.status
+      // streams.fill(payload.result, startIndexStartOrRenew, startIndexStartOrRenew + 1)
+      return state
+        .set('flows', flows.slice())
+        .set('flowStartModalLoading', false)
+    case OPERATE_FLOWS_ERROR:
+      return state.set('flowStartModalLoading', false).set('confirmRechargeLoading', false)
+    case LOAD_RECHARGE_HISTORY:
+      return state.set('rechargeHistoryLoading', true)
+    case LOAD_RECHARGE_HISTORY_SUCCESS:
+      return state.set('rechargeHistoryList', payload.list).set('rechargeHistoryLoading', false)
+    case COMFIRM_RECHARGE:
+      return state.set('confirmRechargeLoading', true)
+    case COMFIRM_RECHARGE_SUCCESS:
+      return state.set('confirmRechargeLoading', false)
     default:
       return state
   }

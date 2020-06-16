@@ -51,7 +51,9 @@ export function generateSourceSinkNamespaceHierarchy (system, result) {
       if (!table) {
         const newTable = {
           value: item.nsTable,
-          label: item.nsTable
+          label: item.nsTable,
+          id: item.id,
+          nsSys: item.nsSys
         }
         database.children.push(newTable)
       }
@@ -64,21 +66,22 @@ export function generateSourceSinkNamespaceHierarchy (system, result) {
  * 生成 step1 的 Hdfslog Source/Sink Namespace Cascader 所需数据源
  */
 export function generateHdfslogNamespaceHierarchy (system, result) {
-  const snsHierarchy = result.length === 0
-    ? []
-    : [{
-      value: '*',
-      label: '*',
-      children: [{
-        value: '*',
-        label: '*',
-        children: [{
-          value: '*',
-          label: '*'
-        }]
-      }]
-    }]
-
+  // const snsHierarchy = result.length === 0
+  //   ? []
+  //   : [{
+  //     value: '*',
+  //     label: '*',
+  //     children: [{
+  //       value: '*',
+  //       label: '*',
+  //       children: [{
+  //         value: '*',
+  //         label: '*',
+  //         nsSys: 'log'
+  //       }]
+  //     }]
+  //   }]
+  const snsHierarchy = []
   result.forEach(item => {
     if (item.nsSys.includes(system)) {
       let instance = snsHierarchy.find(i => i.value === item.nsInstance)
@@ -86,14 +89,16 @@ export function generateHdfslogNamespaceHierarchy (system, result) {
         const newInstance = {
           value: item.nsInstance,
           label: item.nsInstance,
-          children: [{
-            value: '*',
-            label: '*',
-            children: [{
-              value: '*',
-              label: '*'
-            }]
-          }]
+          nsSys: item.nsSys,
+          children: []
+          // children: [{
+          //   value: '*',
+          //   label: '*',
+          //   children: [{
+          //     value: '*',
+          //     label: '*'
+          //   }]
+          // }]
         }
         snsHierarchy.push(newInstance)
         instance = newInstance
@@ -106,7 +111,8 @@ export function generateHdfslogNamespaceHierarchy (system, result) {
           label: item.nsDatabase,
           children: [{
             value: '*',
-            label: '*'
+            label: '*',
+            nsSys: item.nsSys
           }]
         }
         instance.children.push(newDatabase)
@@ -117,7 +123,9 @@ export function generateHdfslogNamespaceHierarchy (system, result) {
       if (!table) {
         const newTable = {
           value: item.nsTable,
-          label: item.nsTable
+          label: item.nsTable,
+          id: item.id,
+          nsSys: item.nsSys
         }
         database.children.push(newTable)
       }
@@ -177,7 +185,7 @@ export function showSinkConfigMsg (value) {
   let sinkConfigMsgTemp = ''
   if (value === 'cassandra') {
     sinkConfigMsgTemp = 'For example: {"mutation_type":"iud"}'
-  } else if (value === 'mysql' || value === 'oracle' || value === 'postgresql') {
+  } else if (value === 'mysql' || value === 'oracle' || value === 'postgresql' || value === 'kudu') {
     sinkConfigMsgTemp = 'For example: {"mutation_type":"iud"}'
   } else if (value === 'es') {
     sinkConfigMsgTemp = 'For example: {"mutation_type":"iud", "_id": "id,name"}'

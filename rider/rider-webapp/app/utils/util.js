@@ -256,34 +256,6 @@ export function forceCheckNumsPart (rule, value, callback) {
 }
 
 /**
- * 必须是字母、数字、中划线或下划线
- */
-export function forceCheckProjectName (rule, value, callback) {
-  const reg = /^[\w-]+$/
-  if (reg.test(value)) {
-    callback()
-  } else {
-    const textZh = '必须是字母、数字、中划线或下划线'
-    const textEn = 'It should be letters, figures, hyphen or underscore'
-    callback(localStorage.getItem('preferredLanguage') === 'en' ? textEn : textZh)
-  }
-}
-
-/**
- * 必须是字母、数字或下划线
- */
-export function forceCheckSave (rule, value, callback) {
-  const reg = /^\w+$/
-  if (reg.test(value)) {
-    callback()
-  } else {
-    const textZh = '必须是字母、数字或下划线'
-    const textEn = 'It should be letters, figures or underscore'
-    callback(localStorage.getItem('preferredLanguage') === 'en' ? textEn : textZh)
-  }
-}
-
-/**
  * change language
  */
 export function operateLanguageText (resultType, actionType) {
@@ -332,11 +304,6 @@ export function operateLanguageSourceToSink () {
   return languageType === 'en' ? 'Source to Sink already exists!' : 'Source to Sink 已存在！'
 }
 
-export function operateLanguageNameExist () {
-  const languageType = localStorage.getItem('preferredLanguage')
-  return languageType === 'en' ? 'This name already exists' : '该 Name 已存在'
-}
-
 export function operateLanguageSinkConfig (languageTextTemp) {
   const languageType = localStorage.getItem('preferredLanguage')
   const languageText = languageType === 'en' ? `${languageTextTemp} Config should be JSON format! ` : `${languageTextTemp} Config 必须为 JSON格式！`
@@ -377,4 +344,20 @@ export function operateLanguageSelect (typeEn, typeZh) {
 export function operateLanguageFillIn (typeEn, typeZh) {
   const languageType = localStorage.getItem('preferredLanguage')
   return languageType === 'en' ? `Please fill in ${typeEn}` : `请填写${typeZh}`
+}
+
+/**
+ *
+ * 为避免antd 控件的嵌套语法，转换所有'.'字符
+ * @export
+ * @param {string} [str='']
+ * @param {boolean} [isParse=true]
+ * @returns
+ */
+export function transformStringWithDot (str = '', isParse = true) {
+  if (isParse) {
+    return str.replace(/\./g, '^!^')
+  } else {
+    return str.replace(/\^!\^/g, '.')
+  }
 }

@@ -27,8 +27,8 @@ import edp.rider.common.RiderLogger
 import edp.rider.rest.persistence.dal.{NamespaceDal, RelProjectNsDal}
 import edp.rider.rest.persistence.entities._
 import edp.rider.rest.router.{JsonSerializer, ResponseJson, ResponseSeqJson, SessionClass}
-import edp.rider.rest.util.AuthorizationProvider
 import edp.rider.rest.util.ResponseUtils._
+import edp.rider.rest.util.{AuthorizationProvider, NamespaceUtils}
 
 import scala.util.{Failure, Success}
 
@@ -92,7 +92,7 @@ class NamespaceUserApi(namespaceDal: NamespaceDal, relProjectNsDal: RelProjectNs
 
                   } else {
                     riderLogger.error(s"user ${session.userId} doesn't have permission to access the project $id.")
-                    complete(OK, getHeader(501, session))
+                    complete(OK, ResponseJson[String](getHeader(403, session), msgMap(403)))
                   }
                 }
 
@@ -104,8 +104,8 @@ class NamespaceUserApi(namespaceDal: NamespaceDal, relProjectNsDal: RelProjectNs
   def filterFlowNsByProjectId(route: String): Route = path(route / LongNumber / "streams" / LongNumber / "namespaces") {
     (projectId, streamId) =>
       get {
-        parameter('sourceType.as[String].?, 'sinkType.as[String].?, 'transType.as[String].?) {
-          (sourceType, sinkType, transType) =>
+        parameter('instanceType.as[String].?,'sourceType.as[String].?, 'sinkType.as[String].?, 'transType.as[String].?) {
+          (instanceType, sourceType, sinkType, transType) =>
             authenticateOAuth2Async[SessionClass]("rider", AuthorizationProvider.authorize) {
               session =>
                 if (session.roleType == "admin") {
@@ -114,8 +114,17 @@ class NamespaceUserApi(namespaceDal: NamespaceDal, relProjectNsDal: RelProjectNs
                 }
                 else {
                   if (session.projectIdList.contains(projectId)) {
-                    (sourceType, sinkType, transType) match {
-                      case (Some(source), None, None) =>
+                    (instanceType, sourceType, sinkType, transType) match {
+                      case (Some(instance),None, None, None) =>
+                        onComplete(relProjectNsDal.getFlowInstanceNamespaceByProjectId(projectId, streamId, instance).mapTo[Seq[NamespaceInfo]]) {
+                          case Success(nsSeq) =>
+                            riderLogger.info(s"user ${session.userId} select namespaces where project id is $projectId, stream id is $streamId and nsSys is $instance success.")
+                            complete(OK, ResponseSeqJson[NamespaceInfo](getHeader(200, session), nsSeq.sortBy(ns => (ns.nsSys, ns.nsInstance, ns.nsDatabase, ns.nsTable))))
+                          case Failure(ex) =>
+                            riderLogger.error(s"user ${session.userId} select namespaces where project id is $projectId and nsSys is $instance failed", ex)
+                            complete(OK, getHeader(451, ex.getMessage, session))
+                        }
+                      case (None, Some(source),None,None) =>
                         onComplete(relProjectNsDal.getFlowSourceNamespaceByProjectId(projectId, streamId, source).mapTo[Seq[NamespaceInfo]]) {
                           case Success(nsSeq) =>
                             riderLogger.info(s"user ${session.userId} select namespaces where project id is $projectId, stream id is $streamId and nsSys is $source success.")
@@ -124,7 +133,7 @@ class NamespaceUserApi(namespaceDal: NamespaceDal, relProjectNsDal: RelProjectNs
                             riderLogger.error(s"user ${session.userId} select namespaces where project id is $projectId and nsSys is $source failed", ex)
                             complete(OK, getHeader(451, ex.getMessage, session))
                         }
-                      case (None, Some(sink), None) =>
+                      case (None, None,Some(sink), None) =>
                         onComplete(relProjectNsDal.getSinkNamespaceByProjectId(projectId, sink).mapTo[Seq[NamespaceInfo]]) {
                           case Success(nsSeq) =>
                             riderLogger.info(s"user ${session.userId} select namespaces where project id is $projectId and nsSys is $sink success.")
@@ -133,7 +142,7 @@ class NamespaceUserApi(namespaceDal: NamespaceDal, relProjectNsDal: RelProjectNs
                             riderLogger.error(s"user ${session.userId} select namespaces where project id is $projectId and nsSys is $sink failed", ex)
                             complete(OK, getHeader(451, ex.getMessage, session))
                         }
-                      case (None, None, Some(trans)) =>
+                      case (None, None, None, Some(trans)) =>
                         onComplete(relProjectNsDal.getTransNamespaceByProjectId(projectId, trans).mapTo[Seq[TransNamespace]]) {
                           case Success(nsSeq) =>
                             riderLogger.info(s"user ${session.userId} select namespaces where project id is $projectId and nsSys is $trans success.")
@@ -142,13 +151,13 @@ class NamespaceUserApi(namespaceDal: NamespaceDal, relProjectNsDal: RelProjectNs
                             riderLogger.error(s"user ${session.userId} select namespaces where project id is $projectId and nsSys is $trans failed", ex)
                             complete(OK, getHeader(451, ex.getMessage, session))
                         }
-                      case (_, _, _) =>
+                      case (_, _, _, _) =>
                         riderLogger.error(s"user ${session.userId} request url is not supported.")
                         complete(OK, getHeader(404, session))
                     }
                   } else {
                     riderLogger.error(s"user ${session.userId} doesn't have permission to access the project $projectId.")
-                    complete(OK, getHeader(501, session))
+                    complete(OK, ResponseJson[String](getHeader(403, session), msgMap(403)))
                   }
                 }
             }
@@ -178,7 +187,7 @@ class NamespaceUserApi(namespaceDal: NamespaceDal, relProjectNsDal: RelProjectNs
                 }
               } else {
                 riderLogger.error(s"user ${session.userId} doesn't have permission to access the project $id.")
-                complete(OK, getHeader(501, session))
+                complete(OK, ResponseJson[String](getHeader(403, session), msgMap(403)))
               }
             }
         }
@@ -207,9 +216,37 @@ class NamespaceUserApi(namespaceDal: NamespaceDal, relProjectNsDal: RelProjectNs
                 }
               } else {
                 riderLogger.error(s"user ${session.userId} doesn't have permission to access the project $id.")
-                complete(OK, getHeader(501, session))
+                complete(OK, ResponseJson[String](getHeader(403, session), msgMap(403)))
               }
 
+            }
+        }
+      }
+  }
+
+  def getTopicRoute(route: String): Route = path(route / LongNumber / "namespaces" / LongNumber / "topic") {
+    (id, nsId) =>
+      get {
+        authenticateOAuth2Async[SessionClass]("rider", AuthorizationProvider.authorize) {
+          session =>
+            if (session.roleType != "user") {
+              riderLogger.warn(s"user ${session.userId} has no permission to access it.")
+              complete(OK, getHeader(403, session))
+            }
+            else {
+              if (session.projectIdList.contains(id)) {
+                try {
+                  val topic = NamespaceUtils.getTopic(nsId)
+                  complete(OK, ResponseJson[String](getHeader(200, session), topic))
+                } catch {
+                  case ex: Exception =>
+                    riderLogger.error(s"user ${session.userId} get namespace $nsId topic failed", ex)
+                    complete(OK, ResponseJson[String](getHeader(451, session), ex.getMessage))
+                }
+              } else {
+                riderLogger.error(s"user ${session.userId} doesn't have permission to access the project $id.")
+                complete(OK, ResponseJson[String](getHeader(403, session), msgMap(403)))
+              }
             }
         }
       }

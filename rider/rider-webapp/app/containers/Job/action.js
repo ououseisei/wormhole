@@ -51,7 +51,11 @@ import {
   QUERY_JOB,
   QUERY_JOB_SUCCESS,
   LOAD_JOB_DETAIL,
-  LOAD_JOB_DETAIL_SUCCESS
+  LOAD_JOB_DETAIL_SUCCESS,
+  LOAD_BACKFILL_TOPIC,
+  LOAD_BACKFILL_TOPIC_SUCCUSS,
+  LOAD_BACKFILL_TOPIC_ERROR,
+  GET_SOURCE_NS_VERSION
 } from './constants'
 
 export function loadAdminAllJobs (resolve) {
@@ -302,10 +306,11 @@ export function jobSourceToSinkExistErrorLoaded (result) {
   }
 }
 
-export function addJob (values, resolve, final) {
+export function addJob (projectId, values, resolve, final) {
   return {
     type: ADD_JOB,
     payload: {
+      projectId,
       values,
       resolve,
       final
@@ -379,3 +384,41 @@ export function jobDetailLoaded (result) {
   }
 }
 
+export function loadJobBackfillTopic (projectId, namespaceId, resolve) {
+  return {
+    type: LOAD_BACKFILL_TOPIC,
+    payload: {
+      projectId,
+      namespaceId,
+      resolve
+    }
+  }
+}
+
+export function jobBackfillTopicLoaded (result) {
+  return {
+    type: LOAD_BACKFILL_TOPIC_SUCCUSS,
+    payload: {
+      result
+    }
+  }
+}
+export function jobBackfillTopicError (result) {
+  return {
+    type: LOAD_BACKFILL_TOPIC_ERROR,
+    payload: {
+      result
+    }
+  }
+}
+
+export function getSourceNsVersion (projectId, namespace, resolve) {
+  return {
+    type: GET_SOURCE_NS_VERSION,
+    payload: {
+      projectId,
+      namespace,
+      resolve
+    }
+  }
+}

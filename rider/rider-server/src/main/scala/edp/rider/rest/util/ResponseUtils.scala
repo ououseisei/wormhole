@@ -24,7 +24,7 @@ package edp.rider.rest.util
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.directives.RespondWithDirectives._
-import edp.rider.rest.router.{ResponseHeader, SessionClass}
+import edp.rider.rest.router.{ResponseHeader, ResponseJson, SessionClass}
 import edp.rider.rest.util.JwtSupport._
 
 object ResponseUtils {
@@ -32,10 +32,10 @@ object ResponseUtils {
   val msgMap = Map(200 -> "Success",
     210 -> "Wrong password",
     401 -> "Unauthorized",
-    403 -> "Insufficient Permissions",
+    403 -> "Insufficient Permission",
     404 -> "Not found",
     418 -> "app type user has no permission to login",
-    451 -> "Request process failed",
+    451 -> "Failed",
     501 -> "Not supported",
     406 -> "action is forbidden",
     507 -> "resource is not enough")
@@ -45,22 +45,23 @@ object ResponseUtils {
   }
 
   def getHeader(code: Int, session: SessionClass): ResponseHeader = {
-    if (session != null) {
-      if (session.roleType == "app")
-        ResponseHeader(code, msgMap(code), generatePermanentToken(session))
-      else ResponseHeader(code, msgMap(code), generateToken(session))
-    }
+    if (session != null)
+      ResponseHeader(code, msgMap(code), generateToken(session))
     else
       ResponseHeader(code, msgMap(code))
   }
 
   def getHeader(code: Int, msg: String, session: SessionClass): ResponseHeader = {
-    if (session != null) {
-      if (session.roleType == "app")
-        ResponseHeader(code, msg, generatePermanentToken(session))
-      else ResponseHeader(code, msg, generateToken(session))
-    }
+    if (session != null)
+      ResponseHeader(code, msg, generateToken(session))
     else
       ResponseHeader(code, msg)
   }
+
+  def setSuccessResponse(session: SessionClass): ResponseJson[String] =
+    ResponseJson[String](getHeader(200, session), msgMap(200))
+
+  def setFailedResponse(session: SessionClass, msg: String = "Failed"): ResponseJson[String] =
+    ResponseJson[String](getHeader(451, session), msg)
 }
+

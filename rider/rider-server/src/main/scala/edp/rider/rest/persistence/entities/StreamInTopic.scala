@@ -27,7 +27,7 @@ import slick.jdbc.MySQLProfile.api._
 
 case class StreamInTopic(id: Long,
                          streamId: Long,
-                         nsInstanceId: Long,
+//                         nsInstanceId: Long,
                          nsDatabaseId: Long,
                          partitionOffsets: String,
                          rate: Int,
@@ -35,11 +35,15 @@ case class StreamInTopic(id: Long,
                          createTime: String,
                          createBy: Long,
                          updateTime: String,
-                         updateBy: Long) extends BaseEntity
+                         updateBy: Long) extends BaseEntity {
+  override def copyWithId(id: Long): this.type = {
+    copy(id = id).asInstanceOf[this.type]
+  }
+}
 
 case class StreamInTopicName(id: Long,
                              streamId: Long,
-                             nsInstanceId: Long,
+//                             nsInstanceId: Long,
                              nsDatabaseId: Long,
                              nsDatabase: String,
                              partitions: Int,
@@ -54,12 +58,12 @@ case class StreamInTopicName(id: Long,
 case class StreamTopicPartition(streamId: Long, topicName: String, partitions: Option[Int])
 
 class StreamInTopicTable(_tableTag: Tag) extends BaseTable[StreamInTopic](_tableTag, "rel_stream_intopic") {
-  def * = (id, streamId, nsInstanceId, nsDatabaseId, partitionOffsets, rate, active, createTime, createBy, updateTime, updateBy) <> (StreamInTopic.tupled, StreamInTopic.unapply)
+  def * = (id, streamId, nsDatabaseId, partitionOffsets, rate, active, createTime, createBy, updateTime, updateBy) <> (StreamInTopic.tupled, StreamInTopic.unapply)
 
   /** Database column stream_id SqlType(BIGINT) */
   val streamId: Rep[Long] = column[Long]("stream_id")
-  /** Database column ns_instance_id SqlType(BIGINT) */
-  val nsInstanceId: Rep[Long] = column[Long]("ns_instance_id")
+//  /** Database column ns_instance_id SqlType(BIGINT) */
+//  val nsInstanceId: Rep[Long] = column[Long]("ns_instance_id")
   /** Database column ns_database_id SqlType(BIGINT) */
   val nsDatabaseId: Rep[Long] = column[Long]("ns_database_id")
   /** Database column partition_offsets SqlType(VARCHAR), Length(200,true) */

@@ -31,7 +31,7 @@ import io.swagger.annotations._
 @Path("/user/projects")
 class NamespaceUserRoutes(modules: ConfigurationModule with PersistenceModule with BusinessModule with RoutesModuleImpl) extends Directives {
 
-  lazy val routes: Route = filterFlowNsByProjectIdRoute ~ getNsByProjectIdRoute ~ getUmsInfoRoute ~ getSinkInfoRoute
+  lazy val routes: Route = filterFlowNsByProjectIdRoute ~ getNsByProjectIdRoute ~ getUmsInfoRoute ~ getSinkInfoRoute ~ getTopicRoute
 
   lazy val basePath = "projects"
 
@@ -40,7 +40,8 @@ class NamespaceUserRoutes(modules: ConfigurationModule with PersistenceModule wi
   @ApiImplicitParams(Array(
     new ApiImplicitParam(name = "projectId", value = "project id", required = true, dataType = "integer", paramType = "path"),
     new ApiImplicitParam(name = "streamId", value = "stream id", required = true, dataType = "integer", paramType = "path"),
-    new ApiImplicitParam(name = "sourceType", value = "source namespace type", required = false, dataType = "string", paramType = "query"),
+    new ApiImplicitParam(name = "instanceType", value = "instance namespace type", required = false, dataType = "string", paramType = "query"),
+    new ApiImplicitParam(name = "sourceType", value = "instance namespace type", required = false, dataType = "string", paramType = "query"),
     new ApiImplicitParam(name = "sinkType", value = "sink namespace type", required = false, dataType = "string", paramType = "query"),
     new ApiImplicitParam(name = "transType", value = "transformation namespace type", required = false, dataType = "string", paramType = "query")
   ))
@@ -101,5 +102,20 @@ class NamespaceUserRoutes(modules: ConfigurationModule with PersistenceModule wi
     new ApiResponse(code = 500, message = "internal server error")
   ))
   def getSinkInfoRoute: Route = modules.namespaceUserService.getSinkInfoByIdRoute(basePath)
+
+  @Path("/{id}/namespaces/{nsId}/topic")
+  @ApiOperation(value = "get namespace topic", notes = "", nickname = "", httpMethod = "GET")
+  @ApiImplicitParams(Array(
+    new ApiImplicitParam(name = "id", value = "project id", required = true, dataType = "integer", paramType = "path"),
+    new ApiImplicitParam(name = "nsId", value = "namespace id", required = true, dataType = "integer", paramType = "path")
+  ))
+  @ApiResponses(Array(
+    new ApiResponse(code = 200, message = "put success"),
+    new ApiResponse(code = 403, message = "user is not admin"),
+    new ApiResponse(code = 401, message = "authorization error"),
+    new ApiResponse(code = 451, message = "request process failed"),
+    new ApiResponse(code = 500, message = "internal server error")
+  ))
+  def getTopicRoute: Route = modules.namespaceUserService.getTopicRoute(basePath)
 }
 

@@ -7,11 +7,11 @@
     <parent>
         <groupId>edp.wormhole</groupId>
         <artifactId>wormhole-parent</artifactId>
-        <version>0.4.1-SNAPSHOTS</version>
+        <version>0.6.3</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>wormhole-ums_${ums.version}-sparkx_${spark.version}</artifactId>
+    <artifactId>wormhole-ums_${ums.version}-sparkx_${spark.extension.version}</artifactId>
     <packaging>jar</packaging>
 
     <properties>
@@ -30,9 +30,16 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
         <dependency>
             <groupId>edp.wormhole</groupId>
-            <artifactId>wormhole-kafka-010</artifactId>
+            <artifactId>wormhole-spark-extension_${spark.extension.version}</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>edp.wormhole</groupId>
+            <artifactId>wormhole-kafka-010-2</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -56,21 +63,17 @@
             <version>${project.version}</version>
             <!--<exclusions>-->
             <!--<exclusion>-->
-                <!--<groupId>com.google.guava</groupId>-->
-                <!--<artifactId>guava</artifactId>-->
+            <!--<groupId>com.google.guava</groupId>-->
+            <!--<artifactId>guava</artifactId>-->
             <!--</exclusion>-->
             <!--</exclusions>-->
         </dependency>
         <!--<dependency>-->
-            <!--<groupId>com.google.guava</groupId>-->
-            <!--<artifactId>guava</artifactId>-->
-            <!--<version>16.0.1</version>-->
+        <!--<groupId>com.google.guava</groupId>-->
+        <!--<artifactId>guava</artifactId>-->
+        <!--<version>16.0.1</version>-->
         <!--</dependency>-->
-        <dependency>
-            <groupId>edp.wormhole</groupId>
-            <artifactId>wormhole-hadoop</artifactId>
-            <version>${project.version}</version>
-        </dependency>
+
         <dependency>
             <groupId>edp.wormhole</groupId>
             <artifactId>wormhole-zookeeper</artifactId>
@@ -82,6 +85,32 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>edp.wormhole</groupId>
+            <artifactId>wormhole-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.wormhole</groupId>
+            <artifactId>wormhole-publicinterface</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.wormhole</groupId>
+            <artifactId>wormhole-sparkxinterface</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.wormhole</groupId>
+            <artifactId>wormhole-sinks</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edp.wormhole</groupId>
+            <artifactId>wormhole-swifts</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.elasticsearch</groupId>
             <artifactId>elasticsearch-spark-20_2.11</artifactId>
             <version>5.5.2</version>
@@ -90,47 +119,6 @@
             <groupId>org.scalaj</groupId>
             <artifactId>scalaj-http_2.11</artifactId>
             <version>2.3.0</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.11</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>oro</groupId>
-                    <artifactId>oro</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>net.iharder</groupId>
-                    <artifactId>base64</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.google.code.findbugs</groupId>
-                    <artifactId>jsr305</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.bouncycastle</groupId>
-                    <artifactId>bcprov-jdk15on</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-streaming_2.11</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_2.11</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.bouncycastle</groupId>
-                    <artifactId>bcprov-jdk15on</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-streaming-kafka-0-10_2.11</artifactId>
         </dependency>
         <dependency>
             <groupId>org.javassist</groupId>
@@ -155,81 +143,87 @@
             <artifactId>cassandra-driver-core</artifactId>
             <version>3.1.1</version>
             <exclusions>
-            <exclusion>
-                <groupId>io.netty</groupId>
-                <artifactId>*</artifactId>
-            </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <!--<dependency>-->
-            <!--<groupId>org.apache.cassandra</groupId>-->
-            <!--<artifactId>cassandra-clientutil</artifactId>-->
-            <!--<version>2.1.2</version>-->
+        <!--<groupId>org.apache.cassandra</groupId>-->
+        <!--<artifactId>cassandra-clientutil</artifactId>-->
+        <!--<version>2.1.2</version>-->
         <!--</dependency>-->
 
-        <dependency>
-            <groupId>com.hortonworks</groupId>
-            <artifactId>shc-core</artifactId>
-            <version>1.1.1-2.1-s_2.11</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>junit</groupId>
-                    <artifactId>junit</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.github.stephenc.findbugs</groupId>
-                    <artifactId>findbugs-annotations</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.google.code.findbugs</groupId>
-                    <artifactId>jsr305</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+        <!--<dependency>-->
+        <!--<groupId>com.hortonworks</groupId>-->
+        <!--<artifactId>shc-core</artifactId>-->
+        <!--<version>1.1.1-2.1-s_2.11</version>-->
+        <!--<exclusions>-->
+        <!--<exclusion>-->
+        <!--<groupId>junit</groupId>-->
+        <!--<artifactId>junit</artifactId>-->
+        <!--</exclusion>-->
+        <!--<exclusion>-->
+        <!--<groupId>com.github.stephenc.findbugs</groupId>-->
+        <!--<artifactId>findbugs-annotations</artifactId>-->
+        <!--</exclusion>-->
+        <!--<exclusion>-->
+        <!--<groupId>com.google.code.findbugs</groupId>-->
+        <!--<artifactId>jsr305</artifactId>-->
+        <!--</exclusion>-->
+        <!--</exclusions>-->
+        <!--</dependency>-->
 
         <!-- hbase-->
-        <dependency>
-            <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-client</artifactId>
-            <version>${hbase.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>junit</groupId>
-                    <artifactId>junit</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.github.stephenc.findbugs</groupId>
-                    <artifactId>findbugs-annotations</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>jdk.tools</groupId>
-                    <artifactId>jdk.tools</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-server</artifactId>
-            <version>${hbase.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.jamon</groupId>
-                    <artifactId>jamon-runtime</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>junit</groupId>
-                    <artifactId>junit</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.jamon</groupId>
-                    <artifactId>jamon-runtime</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.github.stephenc.findbugs</groupId>
-                    <artifactId>findbugs-annotations</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+        <!--<dependency>-->
+        <!--<groupId>org.apache.hbase</groupId>-->
+        <!--<artifactId>hbase-client</artifactId>-->
+        <!--<version>${hbase.version}</version>-->
+        <!--<exclusions>-->
+        <!--<exclusion>-->
+        <!--<groupId>junit</groupId>-->
+        <!--<artifactId>junit</artifactId>-->
+        <!--</exclusion>-->
+        <!--<exclusion>-->
+        <!--<groupId>com.github.stephenc.findbugs</groupId>-->
+        <!--<artifactId>findbugs-annotations</artifactId>-->
+        <!--</exclusion>-->
+        <!--<exclusion>-->
+        <!--<groupId>jdk.tools</groupId>-->
+        <!--<artifactId>jdk.tools</artifactId>-->
+        <!--</exclusion>-->
+        <!--</exclusions>-->
+        <!--</dependency>-->
+        <!--<dependency>-->
+        <!--<groupId>org.apache.hbase</groupId>-->
+        <!--<artifactId>hbase-server</artifactId>-->
+        <!--<version>${hbase.version}</version>-->
+        <!--<exclusions>-->
+        <!--<exclusion>-->
+        <!--<groupId>org.jamon</groupId>-->
+        <!--<artifactId>jamon-runtime</artifactId>-->
+        <!--</exclusion>-->
+        <!--<exclusion>-->
+        <!--<groupId>junit</groupId>-->
+        <!--<artifactId>junit</artifactId>-->
+        <!--</exclusion>-->
+        <!--<exclusion>-->
+        <!--<groupId>org.jamon</groupId>-->
+        <!--<artifactId>jamon-runtime</artifactId>-->
+        <!--</exclusion>-->
+        <!--<exclusion>-->
+        <!--<groupId>com.github.stephenc.findbugs</groupId>-->
+        <!--<artifactId>findbugs-annotations</artifactId>-->
+        <!--</exclusion>-->
+        <!--</exclusions>-->
+        <!--</dependency>-->
+
+        <!--<dependency>-->
+        <!--<groupId>org.apache.kudu</groupId>-->
+        <!--<artifactId>kudu-client</artifactId>-->
+        <!--<version>${kudu.version}</version>-->
+        <!--</dependency>-->
     </dependencies>
 
     <build>
@@ -240,6 +234,7 @@
                 <!-- The Assembly Plugin for Maven is primarily intended to allow users to aggregate the project output along with its dependencies, modules, site documentation, and other files into a single distributable archive -->
                 <version>2.4</version>
                 <configuration>
+
                     <finalName>${project.name}-${project.version}</finalName>
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
@@ -257,20 +252,22 @@
                         <goals>
                             <goal>single</goal>
                         </goals>
+
                     </execution>
                 </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
+                <version>3.1.1</version>
                 <!--<configuration>-->
-                    <!--<relocations>-->
-                        <!--<relocation>-->
-                            <!--<pattern>com.google.common</pattern>-->
-                            <!--<shadedPattern>com.foo.com.google.common</shadedPattern>-->
-                        <!--</relocation>-->
-                    <!--</relocations>-->
-                    <!--<finalName>${project.artifactId}-${project.version}-jar-with-dependencies</finalName>-->
+                <!--<relocations>-->
+                <!--<relocation>-->
+                <!--<pattern>com.google.common</pattern>-->
+                <!--<shadedPattern>com.foo.com.google.common</shadedPattern>-->
+                <!--</relocation>-->
+                <!--</relocations>-->
+                <!--<finalName>${project.artifactId}-${project.version}-jar-with-dependencies</finalName>-->
                 <!--</configuration>-->
                 <executions>
                     <execution>
@@ -293,7 +290,7 @@
                             <transformers>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>edp.wormhole.batchflow.BatchflowStarter</mainClass>
+                                    <mainClass>edp.wormhole.sparkx.batchflow.BatchflowStarter</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

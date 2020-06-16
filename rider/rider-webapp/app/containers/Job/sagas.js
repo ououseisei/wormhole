@@ -35,7 +35,9 @@ import {
   ADD_JOB,
   QUERY_JOB,
   EDIT_JOB,
-  LOAD_JOB_DETAIL
+  LOAD_JOB_DETAIL,
+  LOAD_BACKFILL_TOPIC,
+  GET_SOURCE_NS_VERSION
 } from './constants'
 
 import {
@@ -57,7 +59,9 @@ import {
   jobAdded,
   jobQueryed,
   jobEdited,
-  jobDetailLoaded
+  jobDetailLoaded,
+  jobBackfillTopicLoaded,
+  jobBackfillTopicError
 } from './action'
 
 import request from '../../utils/request'
@@ -171,7 +175,7 @@ export function* loadJobNameValue ({ payload }) {
     const result = yield call(request, `${api.projectUserList}/${payload.projectId}/jobs?jobName=${payload.value}`)
     if (result.code && result.code === 409) {
       yield put(jobNameLoadedError(result.msg))
-      payload.reject()
+      payload.reject(result.msg)
     } else if (result.header.code && result.header.code === 200) {
       yield put(jobNameLoaded(result.payload))
       payload.resolve()
@@ -202,6 +206,25 @@ export function* loadJobSourceNsValue ({ payload }) {
 
 export function* loadJobSourceNsValueWatcher () {
   yield fork(takeEvery, LOAD_JOB_SOURCENS, loadJobSourceNsValue)
+}
+
+export function* loadJobBackfillTopicValue ({ payload }) {
+  try {
+    const result = yield call(request, `${api.projectUserList}/${payload.projectId}/namespaces/${payload.namespaceId}/topic`)
+    if (result.code && result.code !== 200) {
+      yield put(jobBackfillTopicError(result.msg))
+      payload.reject(result.msg)
+    } else if (result.header.code && result.header.code === 200) {
+      yield put(jobBackfillTopicLoaded(result.payload))
+      payload.resolve(result.payload)
+    }
+  } catch (err) {
+    notifySagasError(err, 'loadJobBackfillTopicValue')
+  }
+}
+
+export function* loadJobBackfillTopicValueWatcher () {
+  yield fork(takeEvery, LOAD_BACKFILL_TOPIC, loadJobBackfillTopicValue)
 }
 
 export function* loadJobSinkNsValue ({ payload }) {
@@ -246,7 +269,7 @@ export function* addJob ({ payload }) {
   try {
     const result = yield call(request, {
       method: 'post',
-      url: `${api.projectUserList}/${payload.values.projectId}/jobs`,
+      url: `${api.projectUserList}/${payload.projectId}/jobs`,
       data: payload.values
     })
     yield put(jobAdded(result.payload))
@@ -312,6 +335,19 @@ export function* queryJobDetailWatcher () {
   yield fork(takeEvery, LOAD_JOB_DETAIL, queryJobDetail)
 }
 
+export function* getSourceNsVersion ({ payload }) {
+  try {
+    const result = yield call(request, `${api.projectUserList}/${payload.projectId}/jobs/dataversions?namespace=${payload.namespace}`)
+    payload.resolve(result.payload)
+  } catch (err) {
+    payload.resolve('')
+    notifySagasError(err, 'getSourceNsVersion')
+  }
+}
+export function* getSourceNsVersionWatcher () {
+  yield fork(takeLatest, GET_SOURCE_NS_VERSION, getSourceNsVersion)
+}
+
 export default [
   getAdminAllJobsWatcher,
   getUserAllJobsWatcher,
@@ -326,5 +362,7 @@ export default [
   addJobWatcher,
   queryJobWatcher,
   editJobWatcher,
-  queryJobDetailWatcher
+  queryJobDetailWatcher,
+  loadJobBackfillTopicValueWatcher,
+  getSourceNsVersionWatcher
 ]
